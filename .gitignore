@@ -1,0 +1,7 @@
+﻿.env
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+
+loaniq.db
+loaniq_users.db

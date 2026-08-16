@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+  body { background:transparent; padding:4px 0; color:#F1F5F9; }
+  .field-label { font-size:0.82rem; font-weight:600; color:#CBD5E1;
+                  margin-bottom:6px; display:block; }
+  .field-wrap  { position:relative; margin-bottom:4px; }
+  input { width:100%; padding:10px 40px 10px 12px; background:#0F2340;
+           border:1px solid #1E3A5F; border-radius:6px; color:#F1F5F9;
+           font-size:0.88rem; outline:none; transition:border-color 0.2s; }
+  input:focus { border-color:#00D4FF; }
+  input::placeholder { color:#334155; }
+  .toggle-pw { position:absolute; right:10px; top:50%; transform:translateY(-50%);
+                background:none; border:none; color:#64748B; cursor:pointer;
+                font-size:1rem; padding:0; }
+  .checklist { display:grid; grid-template-columns:1fr 1fr; gap:1px 16px;
+                font-size:0.75rem; line-height:1.85; margin:5px 0 10px 0; }
+  .check { transition:color 0.15s; }
+  .check.pass { color:#10B981; } .check.fail { color:#EF4444; }
+  .check.idle { color:#475569; }
+  .strength-bar-wrap { margin:4px 0 6px 0; }
+  .strength-label { display:flex; justify-content:space-between;
+                     font-size:0.73rem; margin-bottom:4px; color:#64748B; }
+  .strength-bar  { height:5px; background:#1E3A5F; border-radius:3px; overflow:hidden; }
+  .strength-fill { height:100%; border-radius:3px; transition:width 0.25s,background 0.25s; }
+  .match-msg { font-size:0.75rem; margin:3px 0 10px 0; }
+  .match-ok   { color:#10B981; } .match-fail { color:#EF4444; }
+  .notice { font-size:0.70rem; color:#475569; border-top:1px solid #1E3A5F;
+             padding-top:8px; margin-top:6px; line-height:1.6; }
+  .notice strong { color:#64748B; }
+  .submit-btn { width:100%; padding:11px; background:#00D4FF; color:#0A1628;
+                 border:none; border-radius:6px; font-size:0.88rem; font-weight:700;
+                 cursor:pointer; margin-top:10px; transition:opacity 0.2s; }
+  .submit-btn:hover { opacity:0.88; }
+  .submit-btn:disabled { background:#1E3A5F; color:#475569; cursor:not-allowed; }
+  .mb { margin-bottom:12px; }
+  .server-msg { font-size:0.8rem; padding:8px 10px; border-radius:6px; margin-top:8px; }
+  .server-msg.ok  { background:rgba(16,185,129,0.12); color:#10B981; border:1px solid rgba(16,185,129,0.3); }
+  .server-msg.err { background:rgba(239,68,68,0.12);  color:#EF4444; border:1px solid rgba(239,68,68,0.3); }
+</style>
+</head>
+<body>
+
+<div class="mb">
+  <label class="field-label">Choose a username</label>
+  <div class="field-wrap">
+    <input type="text" id="uname" placeholder="e.g. johndoe_123"
+           oninput="checkUsername()" autocomplete="off">
+  </div>
+  <div class="checklist">
+    <span class="check idle" id="u1">○ At least 4 characters</span>
+    <span class="check idle" id="u2">○ Starts with a letter</span>
+    <span class="check idle" id="u3">○ Letters, numbers, . _ - only</span>
+  </div>
+</div>
+
+<div class="mb">
+  <label class="field-label">Choose a password</label>
+  <div class="field-wrap">
+    <input type="password" id="pw" placeholder="e.g. Cloud$River9Moon"
+           oninput="checkPassword()" autocomplete="new-password">
+    <button class="toggle-pw" onclick="togglePw('pw','eye1')" type="button">
+      <span id="eye1">👁</span></button>
+  </div>
+  <div class="strength-bar-wrap" id="strength-wrap" style="display:none">
+    <div class="strength-label">
+      <span>Password strength</span>
+      <span id="strength-label" style="font-weight:700"></span>
+    </div>
+    <div class="strength-bar">
+      <div class="strength-fill" id="strength-fill" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="checklist">
+    <span class="check idle" id="p1">○ At least 8 characters</span>
+    <span class="check idle" id="p2">○ Uppercase letter (A–Z)</span>
+    <span class="check idle" id="p3">○ Lowercase letter (a–z)</span>
+    <span class="check idle" id="p4">○ Number (0–9)</span>
+    <span class="check idle" id="p5">○ Special character (! @ # $)</span>
+    <span class="check idle" id="p6">○ No spaces</span>
+  </div>
+</div>
+
+<div class="mb">
+  <label class="field-label">Confirm password</label>
+  <div class="field-wrap">
+    <input type="password" id="pw2" placeholder="Re-enter your password"
+           oninput="checkMatch()" autocomplete="new-password">
+    <button class="toggle-pw" onclick="togglePw('pw2','eye2')" type="button">
+      <span id="eye2">👁</span></button>
+  </div>
+  <div class="match-msg" id="match-msg"></div>
+</div>
+
+<div class="notice">
+  🔒 Password stored as <strong>salted SHA-256 hash</strong>.
+  Plain text never saved. Last 5 passwords cannot be reused.<br>
+  Based on NIST SP 800-63B, ISO/IEC 27001 and CyberSecurity Malaysia guidelines.
+</div>
+
+<button class="submit-btn" id="submit-btn" onclick="submitForm()" disabled>
+  📝 Create Account
+</button>
+
+<div id="server-msg-wrap"></div>
+
+<script>
+/* ── Streamlit Components JS protocol (no build tools / no React needed) ── */
+const RENDER_EVENT = "streamlit:render";
+
+function sendMessageToStreamlit(type, data) {
+  const outData = Object.assign({ isStreamlitMessage: true, type: type }, data);
+  window.parent.postMessage(outData, "*");
+}
+function initStreamlit() {
+  sendMessageToStreamlit("streamlit:componentReady", { apiVersion: 1 });
+  setFrameHeight();
+}
+function setFrameHeight() {
+  sendMessageToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 20 });
+}
+function setComponentValue(value) {
+  sendMessageToStreamlit("streamlit:setComponentValue", { value: value, dataType: "json" });
+}
+
+// Receive args/messages from Streamlit (e.g. server-side error/success after a submit)
+window.addEventListener("message", (event) => {
+  if (!event.data || event.data.type !== RENDER_EVENT) return;
+  const args = event.data.args || {};
+  const msgBox = document.getElementById("server-msg-wrap");
+  msgBox.innerHTML = "";
+  if (args.server_message) {
+    const cls = args.server_ok ? "ok" : "err";
+    const div = document.createElement("div");
+    div.className = "server-msg " + cls;
+    div.textContent = args.server_message;
+    msgBox.appendChild(div);
+  }
+  setFrameHeight();
+});
+
+window.addEventListener("load", initStreamlit);
+
+/* ── Form logic (validation + visuals) ── */
+const MIN_U = 4, MIN_P = 8;
+const LABELS = {u1:'At least '+MIN_U+' characters', u2:'Starts with a letter',
+                u3:'Letters, numbers, . _ - only',
+                p1:'At least '+MIN_P+' characters', p2:'Uppercase letter (A–Z)',
+                p3:'Lowercase letter (a–z)', p4:'Number (0–9)',
+                p5:'Special character (! @ # $)', p6:'No spaces'};
+
+function setCheck(id, pass, has) {
+  const el = document.getElementById(id);
+  if (!has) { el.className='check idle'; el.textContent='○ '+LABELS[id]; return; }
+  el.className = pass ? 'check pass' : 'check fail';
+  el.textContent = (pass?'✓':'✗') + ' ' + LABELS[id];
+}
+function checkUsername() {
+  const v = document.getElementById('uname').value, has = v.length > 0;
+  setCheck('u1', v.length >= MIN_U, has);
+  setCheck('u2', has && /^[a-zA-Z]/.test(v), has);
+  setCheck('u3', has && /^[a-zA-Z0-9._-]+$/.test(v), has);
+  updateSubmit(); setFrameHeight();
+}
+function checkPassword() {
+  const v = document.getElementById('pw').value, has = v.length > 0;
+  setCheck('p1', v.length >= MIN_P, has);
+  setCheck('p2', /[A-Z]/.test(v), has);
+  setCheck('p3', /[a-z]/.test(v), has);
+  setCheck('p4', /[0-9]/.test(v), has);
+  setCheck('p5', /[!@#$%^&*(),.?]/.test(v), has);
+  setCheck('p6', !/ /.test(v), has);
+  const wrap = document.getElementById('strength-wrap');
+  if (has) {
+    wrap.style.display = 'block';
+    let s = 0;
+    if (v.length>=MIN_P) s++; if (v.length>=12) s++;
+    if (/[A-Z]/.test(v)) s++; if (/[a-z]/.test(v)) s++;
+    if (/[0-9]/.test(v)) s++; if (/[!@#$%^&*(),.?]/.test(v)) s++;
+    const lvls = [[2,'Weak','#EF4444',20],[3,'Fair','#FB923C',45],
+                  [4,'Good','#F59E0B',70],[5,'Strong','#10B981',90],
+                  [99,'Very Strong','#00D4FF',100]];
+    const l = lvls.find(x => s <= x[0]);
+    document.getElementById('strength-label').textContent = l[1];
+    document.getElementById('strength-label').style.color = l[2];
+    document.getElementById('strength-fill').style.width = l[3] + '%';
+    document.getElementById('strength-fill').style.background = l[2];
+  } else { wrap.style.display = 'none'; }
+  checkMatch(); updateSubmit(); setFrameHeight();
+}
+function checkMatch() {
+  const pw = document.getElementById('pw').value,
+        pw2 = document.getElementById('pw2').value,
+        msg = document.getElementById('match-msg');
+  if (!pw2) { msg.textContent = ''; return; }
+  if (pw === pw2) { msg.className='match-msg match-ok'; msg.textContent='✓ Passwords match'; }
+  else { msg.className='match-msg match-fail'; msg.textContent='✗ Passwords do not match'; }
+  updateSubmit();
+}
+function togglePw(id) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+function allU() {
+  const v = document.getElementById('uname').value;
+  return v.length >= MIN_U && /^[a-zA-Z]/.test(v) && /^[a-zA-Z0-9._-]+$/.test(v);
+}
+function allP() {
+  const v = document.getElementById('pw').value;
+  return v.length >= MIN_P && /[A-Z]/.test(v) && /[a-z]/.test(v) &&
+         /[0-9]/.test(v) && /[!@#$%^&*(),.?]/.test(v) && !/ /.test(v);
+}
+function updateSubmit() {
+  const pw = document.getElementById('pw').value,
+        pw2 = document.getElementById('pw2').value;
+  document.getElementById('submit-btn').disabled =
+    !(allU() && allP() && pw === pw2 && pw2.length > 0);
+}
+function submitForm() {
+  const u = document.getElementById('uname').value.trim(),
+        p = document.getElementById('pw').value;
+  if (!allU() || !allP()) return;
+  // Send the submission to Python via the Streamlit component protocol.
+  // A unique submit_id lets Python detect a NEW submission vs. a stale rerun value.
+  setComponentValue({ action: "register", u: u, p: p, submit_id: Date.now() + "_" + Math.random() });
+}
+</script>
+</body>
+</html>
