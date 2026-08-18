@@ -1,7 +1,7 @@
-﻿.env
+﻿# Never upload these to GitHub
+.streamlit/secrets.toml
+loaniq_users.db
+loaniq.db
 __pycache__/
 *.pyc
-.streamlit/secrets.toml
-
-loaniq.db
-loaniq_users.db
+.env
