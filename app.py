@@ -197,13 +197,13 @@ if not st.session_state.onboarding_done:
     c1, gap, c2 = st.columns([1, 0.1, 1])
     with c1:
         st.markdown('<div class="section-title">Credit History</div>', unsafe_allow_html=True)
-        ob_yrs     = st.slider("Years with any credit account?", 0, 40, 5)
+        ob_yrs     = st.slider("Years with any credit account?", 0, 40, 0)
         ob_missed  = st.slider("Missed / late payments in last 2 years?", 0, 20, 0)
-        ob_util    = st.slider("% of credit card limit currently used?", 0, 100, 25)
+        ob_util    = st.slider("% of credit card limit currently used?", 0, 100, 0)
     with c2:
         st.markdown('<div class="section-title">Credit Accounts</div>', unsafe_allow_html=True)
-        ob_acc     = st.slider("Total credit accounts?", 0, 30, 4)
-        ob_new     = st.slider("New accounts opened in last 2 years?", 0, 20, 1)
+        ob_acc     = st.slider("Total credit accounts?", 0, 30, 0)
+        ob_new     = st.slider("New accounts opened in last 2 years?", 0, 20, 0)
         ob_bankr   = st.selectbox("Any bankruptcy in last 7 years?",
                                   ["No", "Yes — 1", "Yes — more than 1"])
 
