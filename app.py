@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="LoanIQ",
     page_icon="🏦",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 import numpy as np
@@ -172,16 +172,16 @@ if not st.session_state.onboarding_done:
     <div style="max-width:680px;margin:3rem auto">
         <div style="text-align:center;margin-bottom:2rem">
             <svg width="56" height="56" viewBox="0 0 84 84" style="margin-bottom:0.75rem">
-                <rect x="0" y="0" width="84" height="84" rx="20" fill="#00D4FF" opacity="0.10"/>
+                <rect x="0" y="0" width="84" height="84" rx="20" fill="#10B981" opacity="0.10"/>
                 <ellipse cx="42" cy="62" rx="26" ry="9" fill="#0F2340" stroke="#0F6E56" stroke-width="2.5"/>
                 <ellipse cx="42" cy="54" rx="26" ry="9" fill="#0F2340" stroke="#0F6E56" stroke-width="2.5"/>
                 <ellipse cx="42" cy="46" rx="26" ry="9" fill="#0F2340" stroke="#1D9E75" stroke-width="2.5"/>
-                <ellipse cx="42" cy="34" rx="26" ry="9" fill="#0F2340" stroke="#00D4FF" stroke-width="2.8"/>
+                <ellipse cx="42" cy="34" rx="26" ry="9" fill="#0F2340" stroke="#10B981" stroke-width="2.8"/>
                 <ellipse cx="42" cy="34" rx="19" ry="6.3" fill="none" stroke="#5DCAA5" stroke-width="1.2" opacity="0.7"/>
                 <text x="42" y="35" font-size="13" font-weight="700" fill="#5DCAA5" font-family="Georgia, serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
             <div style="font-size:2.4rem;font-weight:800;color:#F1F5F9;letter-spacing:-0.03em;line-height:1.1">LoanIQ</div>
-            <div style="font-size:1rem;color:#00D4FF;margin-top:0.3rem;font-weight:500">Loan Decision Intelligence</div>
+            <div style="font-size:1rem;color:#10B981;margin-top:0.3rem;font-weight:500">Loan Decision Intelligence</div>
         </div>
     </div>""", unsafe_allow_html=True)
 
@@ -244,121 +244,75 @@ NAV_PAGES = [
     ("history",    "🕓", "History"),
 ]
 
+# ── Minor structural tweaks not covered by utils/styles.py ──────────────────
 st.markdown("""
 <style>
-/* ── Hide default Streamlit sidebar ── */
-[data-testid="collapsedControl"] { display:none }
-section[data-testid="stSidebar"] { display:none }
-
-/* ── Top nav button styling ── */
-div[data-testid="stHorizontalBlock"] > div > div > div > button {
-    border-radius: 8px !important;
-    font-size: 0.82rem !important;
-    font-weight: 500 !important;
-    padding: 0.45rem 0.75rem !important;
-    transition: all 0.15s ease !important;
-}
-
-/* ── Main content spacing ── */
-.main-content {
-    padding: 0.5rem 1rem 2rem 1rem;
-}
-
-/* ── Page header bar ── */
-.page-header {
-    background: linear-gradient(135deg, #0F2340 0%, #0A1628 100%);
-    border: 1px solid #1E3A5F;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.page-header-left { display:flex; align-items:center; gap:10px; }
-.page-icon  { font-size: 1.5rem; }
-.page-title { font-size: 1.2rem; font-weight: 700; color: #F1F5F9; letter-spacing:-0.02em; }
-.page-sub   { font-size: 0.72rem; color: #475569; text-transform:uppercase; letter-spacing:.08em; }
-.page-badge {
-    font-size: 0.7rem; font-weight: 600;
-    padding: 4px 12px; border-radius: 99px;
-    background: #0A1628; border: 1px solid #1E3A5F; color: #64748B;
-}
+[data-testid="stAppViewContainer"] > .main { background: #F8FAFC; }
+.main-content { padding: 0.5rem 0.5rem 2rem 0.5rem; }
 </style>""", unsafe_allow_html=True)
 
-# ── Branded banner (top, all pages) — STATIC, NO ANIMATIONS ──────────────
-st.markdown("""
-<div style="background:linear-gradient(135deg, rgba(15,35,64,0.7) 0%, rgba(10,22,40,0.9) 100%);
-     backdrop-filter:blur(8px);
-     border:1px solid rgba(30,58,95,0.5);
-     border-radius:16px;
-     padding:1.5rem 2rem;
-     margin-bottom:1.5rem;
-     display:flex;
-     align-items:center;
-     gap:20px;
-     box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-    <div style="display:flex;align-items:center;gap:18px;flex:1;">
-        <!-- Static Logo -->
-        <div style="width:60px;height:60px;flex-shrink:0;
-             background:radial-gradient(circle at 30% 30%, #00D4FF, #0EA5E9);
-             border-radius:16px;display:flex;align-items:center;justify-content:center;">
-            <span style="font-size:28px;font-weight:800;color:#0A1628;font-family:'Georgia',serif;">$</span>
+# ════════════════════════════════════════════════════════════════════════════
+# SIDEBAR: brand, nav, new session, account
+# ════════════════════════════════════════════════════════════════════════════
+with st.sidebar:
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:10px;padding:0.5rem 0 1.25rem 0">
+        <div style="width:38px;height:38px;flex-shrink:0;border-radius:10px;
+             background:radial-gradient(circle at 30% 30%, #10B981, #059669);
+             display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:18px;font-weight:800;color:#0A1628;font-family:Georgia,serif;">$</span>
         </div>
-        <div>
-            <div style="font-size:1.8rem;font-weight:800;color:#F1F5F9;line-height:1.2;">
-                LoanIQ
-            </div>
-            <div style="font-size:0.95rem;color:#94A3B8;font-weight:500;margin-top:2px;
-                 letter-spacing:0.02em;">
-                AI‑Powered Loan Decision Intelligence
-            </div>
-        </div>
+        <div style="font-size:1.25rem;font-weight:800;color:#F1F5F9;letter-spacing:-0.02em">LoanIQ</div>
     </div>
-    <!-- Optional tagline -->
-    <div style="font-size:0.75rem;color:#475569;text-align:right;border-left:1px solid #1E3A5F;padding-left:18px;">
-        <span style="display:block;font-weight:600;color:#64748B;">Instant · Explainable · Fair</span>
-        <span style="font-size:0.65rem;opacity:0.7;">v2.0</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# ── Nav row: 5 page buttons + New Session button in same row ─────────────────
-all_cols = st.columns(len(NAV_PAGES) + 1)
-for col, (pid, icon, label) in zip(all_cols[:-1], NAV_PAGES):
-    with col:
+    for pid, icon, label in NAV_PAGES:
         is_active = st.session_state.page == pid
         if st.button(
-            f"{icon} {label}",
+            f"{icon}   {label}",
             key=f"nav_{pid}",
             use_container_width=True,
-            type="primary" if is_active else "secondary"
+            type="primary" if is_active else "secondary",
         ):
             st.session_state.page = pid
             st.rerun()
-with all_cols[-1]:
-    if st.button("🔄 New Session", use_container_width=True,
+
+    st.markdown('<div style="height:0.75rem"></div>', unsafe_allow_html=True)
+    if st.button("＋ New Session", use_container_width=True, key="new_session_btn",
                  help="Clear all data — press before next user starts"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
 
-# ── Logged-in user info + Logout ──────────────────────────────────────────────
-user_info_col, logout_col = st.columns([4, 1])
-with user_info_col:
+    st.markdown('<div style="height:8rem"></div>', unsafe_allow_html=True)
+    st.markdown("<hr style='margin:0.5rem 0'>", unsafe_allow_html=True)
     uname = st.session_state.get("username", "")
-    st.markdown(f'''
-    <div style="font-size:0.78rem;color:#475569;padding:4px 0">
-        👤 Logged in as <strong style="color:#00D4FF">{uname}</strong>
-    </div>''', unsafe_allow_html=True)
-with logout_col:
-    if st.button("🚪 Logout", use_container_width=True, key="logout_btn"):
+    st.markdown(f"""
+    <div style="font-size:0.75rem;color:#94A3B8;padding:6px 0 2px 0">Logged in as</div>
+    <div style="font-size:0.9rem;font-weight:700;color:#10B981;padding-bottom:10px">{uname}</div>
+    """, unsafe_allow_html=True)
+    if st.button("⏻  Logout", use_container_width=True, key="logout_btn"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
 
-st.markdown('<div style="height:0.75rem"></div>', unsafe_allow_html=True)
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
+
+# ── Welcome header (Home page only) — other pages use the .page-header bar ──
+if st.session_state.page == "home":
+    _uname = st.session_state.get("username", "there")
+    _now = datetime.now().strftime("%B %d, %Y  |  %I:%M %p")
+    st.markdown(f"""
+    <div class="welcome-bar">
+        <div>
+            <div class="welcome-title">Welcome back, {_uname} 👋</div>
+            <div class="welcome-sub">Let's get started with your loan assessment.</div>
+        </div>
+        <div class="welcome-time">📅 {_now}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown('<div style="height:0.25rem"></div>', unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════════════
 # INPUT FORM (shown on Home page, collapsed summary on others)
@@ -430,7 +384,7 @@ input_data = {
 if current_page == "home":
 
     if has_results:
-        st.markdown('<div class="section-title" style="margin-top:0.75rem">Latest Result</div>',
+        st.markdown('<div class="section-title" style="margin-top:0.75rem">Application Summary</div>',
                     unsafe_allow_html=True)
         q1, q2, q3, q4 = st.columns(4)
         appr_c = "#10B981" if r["approval_pred"]==1 else "#EF4444"
@@ -438,7 +392,7 @@ if current_page == "home":
         def_c  = "#10B981" if r["default_prob"]<0.20 else ("#F59E0B" if r["default_prob"]<0.50 else "#EF4444")
         def_l  = "🟢 LOW" if r["default_prob"]<0.20 else ("🟡 MEDIUM" if r["default_prob"]<0.50 else "🔴 HIGH")
         hs_c   = "#10B981" if r["health_score"]>=80 else ("#F59E0B" if r["health_score"]>=50 else "#EF4444")
-        seg_c  = {"Prime Borrower":"#00D4FF","Standard Borrower":"#818CF8",
+        seg_c  = {"Prime Borrower":"#10B981","Standard Borrower":"#818CF8",
                   "Growth Borrower":"#FB923C"}.get(r["segment"],"#818CF8")
         for col, eyebrow, val, sub, color in [
             (q1,"APPROVAL",     appr_l,                        f"{r['approval_prob']*100:.1f}% confidence", appr_c),
@@ -475,10 +429,10 @@ if current_page == "home":
         <div style="width:40px;height:2px;background:#1E3A5F;flex-shrink:0"></div>
         <div style="display:flex;align-items:center;gap:8px;flex:1;padding:0 8px">
             <div style="width:24px;height:24px;border-radius:50%;
-                 background:#00D4FF;display:flex;align-items:center;justify-content:center;
+                 background:#10B981;display:flex;align-items:center;justify-content:center;
                  font-size:11px;font-weight:700;color:#000;flex-shrink:0">2</div>
             <div>
-                <div style="font-size:0.78rem;font-weight:600;color:#00D4FF">Step 2 — Loan Details</div>
+                <div style="font-size:0.78rem;font-weight:600;color:#10B981">Step 2 — Loan Details</div>
                 <div style="font-size:0.8rem;color:#475569">Fill in the form below</div>
             </div>
         </div>
@@ -770,7 +724,7 @@ elif current_page == "decision":
             <div class="metric-sub">Confidence: {r['approval_prob']*100:.1f}%</div>
         </div>""", unsafe_allow_html=True)
     with c2:
-        st.plotly_chart(gauge_chart(r["approval_prob"]*100,"Approval Probability","#00D4FF"),
+        st.plotly_chart(gauge_chart(r["approval_prob"]*100,"Approval Probability","#10B981"),
                         use_container_width=True, config={"displayModeBar":False})
     def_lbl2 = ("🟢 LOW RISK"    if r["default_prob"]<0.20 else
                 "🟡 MEDIUM RISK" if r["default_prob"]<0.50 else "🔴 HIGH RISK")
@@ -791,7 +745,7 @@ elif current_page == "decision":
             <div class="metric-main" style="color:{hs_c2}">{r['health_score']:.0f}<span style="font-size:1rem;opacity:.6"> /100</span></div>
             <div class="metric-sub">{"Excellent" if r["health_score"]>=80 else ("Moderate" if r["health_score"]>=50 else "Risky")}</div>
         </div>""", unsafe_allow_html=True)
-    seg_c2 = {"Prime Borrower":"#00D4FF","Standard Borrower":"#818CF8","Growth Borrower":"#FB923C"}.get(r["segment"],"#818CF8")
+    seg_c2 = {"Prime Borrower":"#10B981","Standard Borrower":"#818CF8","Growth Borrower":"#FB923C"}.get(r["segment"],"#818CF8")
     seg_i2 = {"Prime Borrower":"💎","Standard Borrower":"🏦","Growth Borrower":"🌱"}.get(r["segment"],"👤")
     with c5:
         st.markdown(f"""
@@ -808,7 +762,7 @@ elif current_page == "decision":
         st.markdown('<div class="section-title">Probability Analysis</div>', unsafe_allow_html=True)
         t1, t2 = st.tabs(["🏦 Loan Eligibility", "⚠️ Repayment Risk"])
         with t1:
-            st.plotly_chart(probability_dial(r["approval_prob"],"Loan Approval Probability","#00D4FF"),
+            st.plotly_chart(probability_dial(r["approval_prob"],"Loan Approval Probability","#10B981"),
                             use_container_width=True, config={"displayModeBar":False})
             st.markdown("""<div class="shap-info" style="font-size:.72rem">
                 Above 50% means your profile resembles historically approved borrowers.
@@ -959,16 +913,16 @@ elif current_page == "explanation":
 
     with el:
         st.markdown("""
-        <div style="background:#0F2340;border:1px solid #1E3A5F;border-top:3px solid #00D4FF;
+        <div style="background:#0F2340;border:1px solid #1E3A5F;border-top:3px solid #10B981;
              border-radius:10px;padding:10px 14px;margin-bottom:10px">
-            <div style="font-size:0.82rem;font-weight:600;color:#00D4FF;text-transform:uppercase;
+            <div style="font-size:0.82rem;font-weight:600;color:#10B981;text-transform:uppercase;
                  letter-spacing:.08em">🏦 Loan Eligibility — Why approved or rejected?</div>
         </div>""", unsafe_allow_html=True)
         if r["shap_approval"]:
             sv    = r["shap_approval"]
             pairs = sorted(zip(sv["features"],sv["values"]),key=lambda x:abs(x[1]),reverse=True)[:8]
             sv_pl = {"features":[_pname(f) for f,_ in pairs],"values":[v for _,v in pairs]}
-            st.plotly_chart(shap_bar_chart(sv_pl,"Approval","#00D4FF"),
+            st.plotly_chart(shap_bar_chart(sv_pl,"Approval","#10B981"),
                             use_container_width=True,config={"displayModeBar":False})
             st.markdown('<div class="section-subtitle" style="margin-top:0.5rem">Plain-English explanation:</div>',
                         unsafe_allow_html=True)
@@ -1032,7 +986,7 @@ elif current_page == "profile":
         st.info("No analysis run yet. Go to 🏠 Home and click Run Eligibility Analysis.")
         st.stop()
 
-    seg_color3 = {"Prime Borrower":"#00D4FF","Standard Borrower":"#818CF8",
+    seg_color3 = {"Prime Borrower":"#10B981","Standard Borrower":"#818CF8",
                   "Growth Borrower":"#FB923C"}.get(r["segment"],"#818CF8")
     seg_icon3  = {"Prime Borrower":"💎","Standard Borrower":"🏦",
                   "Growth Borrower":"🌱"}.get(r["segment"],"👤")
@@ -1167,7 +1121,7 @@ elif current_page == "history":
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=timestamps, y=health_scores,
                 mode="lines+markers", name="Health Score",
-                line=dict(color="#00D4FF", width=2),
+                line=dict(color="#10B981", width=2),
                 marker=dict(size=8)))
             fig.add_trace(go.Scatter(x=timestamps, y=approval_probs,
                 mode="lines+markers", name="Approval Probability %",
