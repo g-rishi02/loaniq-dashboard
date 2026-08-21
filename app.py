@@ -366,25 +366,25 @@ st.markdown('<div class="main-content">', unsafe_allow_html=True)
 current_page = st.session_state.page
 
 if current_page == "home":
-    loan_amnt      = st.session_state.get("s_loan_amnt",      15000)
-    annual_inc     = st.session_state.get("s_annual_inc",     65000)
-    monthly_debt   = st.session_state.get("s_monthly_debt",   800)
+    loan_amnt      = st.session_state.get("s_loan_amnt",      1000)
+    annual_inc     = st.session_state.get("s_annual_inc",     10000)
+    monthly_debt   = st.session_state.get("s_monthly_debt",   0)
     purpose        = st.session_state.get("s_purpose",        "Debt Consolidation")
     emp_length     = st.session_state.get("s_emp_length",     "5 years")
     term_clean     = st.session_state.get("s_term_clean",     "36 months")
     home_ownership = st.session_state.get("s_home_ownership", "Renting")
-    est_revolving_balance = st.session_state.get("s_revol_bal", 5000)
+    est_revolving_balance = st.session_state.get("s_revol_bal", 0)
     predict_btn    = False  # will be overwritten by the button widget below
 
 else:
-    loan_amnt      = st.session_state.get("s_loan_amnt",      15000)
-    annual_inc     = st.session_state.get("s_annual_inc",     65000)
-    monthly_debt   = st.session_state.get("s_monthly_debt",   800)
+    loan_amnt      = st.session_state.get("s_loan_amnt",      1000)
+    annual_inc     = st.session_state.get("s_annual_inc",     10000)
+    monthly_debt   = st.session_state.get("s_monthly_debt",   0)
     purpose        = st.session_state.get("s_purpose",        "Debt Consolidation")
     emp_length     = st.session_state.get("s_emp_length",     "5 years")
     term_clean     = st.session_state.get("s_term_clean",     "36 months")
     home_ownership = st.session_state.get("s_home_ownership", "Renting")
-    est_revolving_balance = st.session_state.get("s_revol_bal", 5000)
+    est_revolving_balance = st.session_state.get("s_revol_bal", 0)
     predict_btn    = False
     fico_score     = _estimate_fico(ob_yrs, ob_missed, ob_util, ob_acc, ob_bankr_num)
     dti            = _estimate_dti(monthly_debt, annual_inc)
@@ -535,7 +535,7 @@ if current_page == "home":
     with fi1:
         st.markdown('<div class="section-title">Loan Request</div>', unsafe_allow_html=True)
         loan_amnt = st.number_input("How much do you want to borrow? ($)",
-                                     min_value=1000, max_value=40000, value=15000, step=500,
+                                     min_value=1000, max_value=40000, value=1000, step=500,
                                      key="h_loan_amnt")
         purpose   = st.selectbox("What is the loan for?",
                                   ["Debt Consolidation","Credit Card","Home Improvement",
@@ -549,10 +549,10 @@ if current_page == "home":
     with fi2:
         st.markdown('<div class="section-title">Financial Information</div>', unsafe_allow_html=True)
         annual_inc   = st.number_input("Annual Income ($)", min_value=10000,
-                                        max_value=500000, value=65000, step=1000,
+                                        max_value=500000, value=10000, step=1000,
                                         key="h_annual_inc")
         monthly_debt = st.number_input("Total Monthly Debt Payments ($)",
-                                        min_value=0, max_value=20000, value=800, step=50,
+                                        min_value=0, max_value=20000, value=0, step=50,
                                         key="h_monthly_debt")
         home_ownership = st.selectbox("Home Ownership",
                                        ["Renting","Own (with mortgage)",
@@ -561,7 +561,7 @@ if current_page == "home":
         emp_length   = st.selectbox("Employment Length",
                                      ["< 1 year","1 year","2 years","3 years","4 years",
                                       "5 years","6 years","7 years","8 years","9 years","10+ years"],
-                                     index=4, key="h_emp_length")
+                                     index=0, key="h_emp_length")
 
         live_dti = _estimate_dti(monthly_debt, annual_inc)
         lti_ratio = loan_amnt / max(annual_inc, 1)
@@ -618,7 +618,7 @@ if current_page == "home":
         """, unsafe_allow_html=True)
         est_revolving_balance = st.number_input("Total credit card balance ($)",
                                                  min_value=0, max_value=200000,
-                                                 value=5000, step=500,
+                                                 value=0, step=500,
                                                  key="h_revol_bal")
         if st.button("✏️ Edit Credit History", use_container_width=True, key="home_edit_credit"):
             st.session_state.onboarding_done = False
