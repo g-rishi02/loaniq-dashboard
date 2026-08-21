@@ -659,8 +659,6 @@ elif current_page == "decision":
         </div>
     </div>""", unsafe_allow_html=True)
 
-    _back_edit_row("decision")
-
     if not has_results:
         st.info("No analysis run yet. Go to 🏠 Home and click Run Eligibility Analysis.")
         st.stop()
@@ -819,8 +817,6 @@ elif current_page == "explanation":
         </div>
     </div>""", unsafe_allow_html=True)
 
-    _back_edit_row("explanation")
-
     if not has_results:
         st.info("No analysis run yet. Go to 🏠 Home and click Run Eligibility Analysis.")
         st.stop()
@@ -931,7 +927,7 @@ elif current_page == "explanation":
                 <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;
                      border-bottom:0.5px solid #E2E8F0;font-size:0.8rem;line-height:1.5">
                     <span style="flex-shrink:0">{icon}</span>
-                    <span style="color:#CBD5E1">{txt}</span>
+                    <span style="color:#334155">{txt}</span>
                 </div>""", unsafe_allow_html=True)
 
     with er:
@@ -954,7 +950,7 @@ elif current_page == "explanation":
                 <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;
                      border-bottom:0.5px solid #E2E8F0;font-size:0.8rem;line-height:1.5">
                     <span style="flex-shrink:0">{icon}</span>
-                    <span style="color:#CBD5E1">{txt}</span>
+                    <span style="color:#334155">{txt}</span>
                 </div>""", unsafe_allow_html=True)
 
     st.markdown("""
@@ -979,8 +975,6 @@ elif current_page == "profile":
             <div class="page-sub">Customer segment · Application summary</div></div>
         </div>
     </div>""", unsafe_allow_html=True)
-
-    _back_edit_row("profile")
 
     if not has_results:
         st.info("No analysis run yet. Go to 🏠 Home and click Run Eligibility Analysis.")
