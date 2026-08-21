@@ -134,8 +134,13 @@ def inject_css():
         letter-spacing: 0.01em !important;
         text-align: left !important;
         justify-content: flex-start !important;
-        box-shadow: none;
+        box-shadow: none !important;
         transition: all 0.2s ease !important;
+    }
+    [data-testid="stSidebar"] .stButton > button p,
+    [data-testid="stSidebar"] .stButton > button span,
+    [data-testid="stSidebar"] .stButton > button div {
+        color: inherit !important;
     }
     [data-testid="stSidebar"] .stButton > button:hover {
         background: #1D3A5F !important;
@@ -146,7 +151,12 @@ def inject_css():
         border: none !important;
         color: #0A1628 !important;
         font-weight: 700 !important;
-        box-shadow: 0 4px 16px rgba(16,185,129,0.3);
+        box-shadow: 0 4px 16px rgba(16,185,129,0.3) !important;
+    }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] p,
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] span,
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] div {
+        color: #0A1628 !important;
     }
     [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
         background: #0EA974 !important;

@@ -415,39 +415,39 @@ if current_page == "home":
     step2_done = has_results
     st.markdown(f"""
     <div style="display:flex;align-items:center;gap:0;margin-bottom:1.25rem;
-         background:#0F2340;border:1px solid #1E3A5F;border-radius:10px;
-         padding:10px 16px;overflow:hidden">
+         background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;
+         padding:10px 16px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.05)">
         <div style="display:flex;align-items:center;gap:8px;flex:1">
             <div style="width:24px;height:24px;border-radius:50%;background:#10B981;
                  display:flex;align-items:center;justify-content:center;
                  font-size:11px;font-weight:700;color:#fff;flex-shrink:0">✓</div>
             <div>
                 <div style="font-size:0.78rem;font-weight:600;color:#10B981">Step 1 — Credit History</div>
-                <div style="font-size:0.8rem;color:#475569">Collected on entry screen</div>
+                <div style="font-size:0.8rem;color:#64748B">Collected on entry screen</div>
             </div>
         </div>
-        <div style="width:40px;height:2px;background:#1E3A5F;flex-shrink:0"></div>
+        <div style="width:40px;height:2px;background:#E2E8F0;flex-shrink:0"></div>
         <div style="display:flex;align-items:center;gap:8px;flex:1;padding:0 8px">
             <div style="width:24px;height:24px;border-radius:50%;
                  background:#10B981;display:flex;align-items:center;justify-content:center;
                  font-size:11px;font-weight:700;color:#000;flex-shrink:0">2</div>
             <div>
                 <div style="font-size:0.78rem;font-weight:600;color:#10B981">Step 2 — Loan Details</div>
-                <div style="font-size:0.8rem;color:#475569">Fill in the form below</div>
+                <div style="font-size:0.8rem;color:#64748B">Fill in the form below</div>
             </div>
         </div>
-        <div style="width:40px;height:2px;background:#1E3A5F;flex-shrink:0"></div>
+        <div style="width:40px;height:2px;background:#E2E8F0;flex-shrink:0"></div>
         <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end">
             <div style="width:24px;height:24px;border-radius:50%;
-                 background:{'#10B981' if step2_done else '#1E3A5F'};
+                 background:{'#10B981' if step2_done else '#E2E8F0'};
                  display:flex;align-items:center;justify-content:center;
                  font-size:11px;font-weight:700;
-                 color:{'#fff' if step2_done else '#475569'};flex-shrink:0">
+                 color:{'#fff' if step2_done else '#94A3B8'};flex-shrink:0">
                  {'✓' if step2_done else '3'}</div>
             <div>
                 <div style="font-size:0.78rem;font-weight:600;
-                     color:{'#10B981' if step2_done else '#475569'}">Step 3 — AI Analysis</div>
-                <div style="font-size:0.8rem;color:#475569">
+                     color:{'#10B981' if step2_done else '#64748B'}">Step 3 — AI Analysis</div>
+                <div style="font-size:0.8rem;color:#64748B">
                      {'Complete — view results below' if step2_done else 'Click Run Analysis to start'}</div>
             </div>
         </div>
@@ -458,29 +458,29 @@ if current_page == "home":
                       "#FB923C" if fico_score < 670 else
                       "#F59E0B" if fico_score < 740 else "#10B981")
     st.markdown(f"""
-    <div style="background:#0F2340;border:1px solid #1E3A5F;border-left:3px solid {fico_bar_color};
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:3px solid {fico_bar_color};
          border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:1.25rem;
-         display:flex;align-items:center;gap:16px">
+         display:flex;align-items:center;gap:16px;box-shadow:0 1px 3px rgba(15,23,42,0.05)">
         <div style="flex-shrink:0">
-            <div style="font-size:0.8rem;color:#475569;text-transform:uppercase;
+            <div style="font-size:0.8rem;color:#64748B;text-transform:uppercase;
                  letter-spacing:.07em;margin-bottom:2px">Live Credit Score Estimate</div>
             <div style="font-size:1.6rem;font-weight:700;color:{fico_bar_color};
                  line-height:1">{fico_score}</div>
             <div style="font-size:0.82rem;color:{fico_bar_color}">{fico_label}</div>
         </div>
         <div style="flex:1">
-            <div style="height:8px;background:#1E3A5F;border-radius:4px;
+            <div style="height:8px;background:#E2E8F0;border-radius:4px;
                  overflow:hidden;margin-bottom:4px">
                 <div style="height:100%;width:{fico_pct}%;background:{fico_bar_color};
                      border-radius:4px;transition:width 0.3s"></div>
             </div>
             <div style="display:flex;justify-content:space-between;
-                 font-size:0.78rem;color:#475569">
+                 font-size:0.78rem;color:#64748B">
                 <span>Poor 300</span><span>Fair 580</span>
                 <span>Good 670</span><span>Very Good 740</span><span>Exceptional 850</span>
             </div>
         </div>
-        <div style="font-size:0.8rem;color:#475569;flex-shrink:0;text-align:right">
+        <div style="font-size:0.8rem;color:#64748B;flex-shrink:0;text-align:right">
             Updates as you<br>adjust credit history
         </div>
     </div>""", unsafe_allow_html=True)
@@ -535,23 +535,23 @@ if current_page == "home":
         fico_c2,fico_i = _status(fico_score, 580, 670, invert=True)
 
         st.markdown(f"""
-        <div style="background:#0F2340;border:1px solid #1E3A5F;border-radius:10px;
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;
              padding:10px 12px;margin-top:0.75rem">
-            <div style="font-size:0.8rem;color:#475569;text-transform:uppercase;
+            <div style="font-size:0.8rem;color:#64748B;text-transform:uppercase;
                  letter-spacing:.07em;margin-bottom:8px">📋 Application Health Check</div>
             <div style="display:flex;justify-content:space-between;align-items:center;
-                 padding:4px 0;border-bottom:0.5px solid #1E3A5F;font-size:0.75rem">
-                <span style="color:#94A3B8">Debt-to-Income</span>
+                 padding:4px 0;border-bottom:0.5px solid #E2E8F0;font-size:0.75rem">
+                <span style="color:#64748B">Debt-to-Income</span>
                 <span style="color:{dti_c};font-weight:600">{dti_i} {live_dti:.1f}%</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;
-                 padding:4px 0;border-bottom:0.5px solid #1E3A5F;font-size:0.75rem">
-                <span style="color:#94A3B8">Loan-to-Income</span>
+                 padding:4px 0;border-bottom:0.5px solid #E2E8F0;font-size:0.75rem">
+                <span style="color:#64748B">Loan-to-Income</span>
                 <span style="color:{lti_c};font-weight:600">{lti_i} {lti_ratio:.2f}x</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;
                  padding:4px 0;font-size:0.75rem">
-                <span style="color:#94A3B8">Credit Score</span>
+                <span style="color:#64748B">Credit Score</span>
                 <span style="color:{fico_c2};font-weight:600">{fico_i} {fico_score} ({fico_label})</span>
             </div>
         </div>""", unsafe_allow_html=True)
@@ -913,8 +913,8 @@ elif current_page == "explanation":
 
     with el:
         st.markdown("""
-        <div style="background:#0F2340;border:1px solid #1E3A5F;border-top:3px solid #10B981;
-             border-radius:10px;padding:10px 14px;margin-bottom:10px">
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-top:3px solid #10B981;
+             border-radius:10px;padding:10px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(15,23,42,0.05)">
             <div style="font-size:0.82rem;font-weight:600;color:#10B981;text-transform:uppercase;
                  letter-spacing:.08em">🏦 Loan Eligibility — Why approved or rejected?</div>
         </div>""", unsafe_allow_html=True)
@@ -929,15 +929,15 @@ elif current_page == "explanation":
             for icon, txt, color in _bullets(pairs, "approval"):
                 st.markdown(f"""
                 <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;
-                     border-bottom:0.5px solid #1E3A5F;font-size:0.8rem;line-height:1.5">
+                     border-bottom:0.5px solid #E2E8F0;font-size:0.8rem;line-height:1.5">
                     <span style="flex-shrink:0">{icon}</span>
                     <span style="color:#CBD5E1">{txt}</span>
                 </div>""", unsafe_allow_html=True)
 
     with er:
         st.markdown("""
-        <div style="background:#0F2340;border:1px solid #1E3A5F;border-top:3px solid #818CF8;
-             border-radius:10px;padding:10px 14px;margin-bottom:10px">
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-top:3px solid #818CF8;
+             border-radius:10px;padding:10px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(15,23,42,0.05)">
             <div style="font-size:0.82rem;font-weight:600;color:#818CF8;text-transform:uppercase;
                  letter-spacing:.08em">💳 Repayment Risk — Why is my risk this level?</div>
         </div>""", unsafe_allow_html=True)
@@ -952,7 +952,7 @@ elif current_page == "explanation":
             for icon, txt, color in _bullets(pairs, "default"):
                 st.markdown(f"""
                 <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;
-                     border-bottom:0.5px solid #1E3A5F;font-size:0.8rem;line-height:1.5">
+                     border-bottom:0.5px solid #E2E8F0;font-size:0.8rem;line-height:1.5">
                     <span style="flex-shrink:0">{icon}</span>
                     <span style="color:#CBD5E1">{txt}</span>
                 </div>""", unsafe_allow_html=True)
@@ -1129,12 +1129,12 @@ elif current_page == "history":
                 marker=dict(size=8)))
             fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(15,35,64,0.5)",
-                font=dict(color="#CBD5E1"),
+                plot_bgcolor="rgba(248,250,252,0.6)",
+                font=dict(color="#334155"),
                 legend=dict(bgcolor="rgba(0,0,0,0)"),
                 margin=dict(t=20, b=20, l=0, r=0),
-                yaxis=dict(range=[0,105], gridcolor="#1E3A5F"),
-                xaxis=dict(gridcolor="#1E3A5F"),
+                yaxis=dict(range=[0,105], gridcolor="#E2E8F0"),
+                xaxis=dict(gridcolor="#E2E8F0"),
                 height=280,
             )
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
