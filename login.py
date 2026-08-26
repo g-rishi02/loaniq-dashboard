@@ -380,8 +380,8 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">Loan Decision Intelligence</div>
-            <div class="login-sub">AI-Powered Smarter Lending</div>
+            <div class="login-title">LoanIQ</div>
+            <div class="login-sub">AI-Powered Loan Decision Intelligence</div>
         </div>
         """, unsafe_allow_html=True)
 
