@@ -279,6 +279,14 @@ def show_login_page() -> bool:
         border-radius:8px !important;
         padding-top:0.6rem !important;
         padding-bottom:0.6rem !important;
+        width:100% !important;
+        box-sizing:border-box !important;
+    }
+    .st-key-login_card [data-baseweb="input"],
+    .st-key-login_card [data-baseweb="base-input"],
+    .st-key-login_card .stTextInput,
+    .st-key-login_card .stTextInput > div {
+        width:100% !important;
     }
     .st-key-login_card input:focus {
         background:#FFFFFF !important;
@@ -330,8 +338,8 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">LoanIQ</div>
-            <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
+            <div class="login-title">Loan Decision Intelligence</div>
+            <div class="login-sub">AI-Powered Smarter Lending</div>
         </div>
         """, unsafe_allow_html=True)
 
