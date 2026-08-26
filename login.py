@@ -297,6 +297,17 @@ def show_login_page() -> bool:
         color:#94A3B8 !important;
     }
 
+    /* ── Spread Login/Register tabs to opposite ends instead of clustering
+       on the left ── */
+    .st-key-login_card .stTabs [data-baseweb="tab-list"] {
+        display:flex !important;
+        justify-content:space-between !important;
+        width:100% !important;
+    }
+    .st-key-login_card .stTabs [data-baseweb="tab"] {
+        flex-shrink:0;
+    }
+
     /* ── "Forgot password?" styled as a plain link, not a boxed button.
        Two overlapping selectors for reliability:
        (1) matches styles.py's secondary-button specificity exactly, and
