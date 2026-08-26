@@ -352,9 +352,6 @@ def show_login_page() -> bool:
         transform:none !important;
         box-shadow:none !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) {
-        align-items:center;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -389,15 +386,16 @@ def show_login_page() -> bool:
                                             placeholder="Enter your password",
                                             key="login_password")
 
-                rem_col, forgot_col = st.columns([1, 1])
-                with rem_col:
-                    remember_me = st.checkbox("Remember me", key="remember_me", value=True)
-                with forgot_col:
+                # Forgot password — right-aligned directly under the password field
+                _fp_spacer, fp_col = st.columns([3, 1])
+                with fp_col:
                     forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
-                                                use_container_width=False)
+                                                use_container_width=True)
                 if forgot_clicked:
                     st.info("Password reset isn't self-service yet — please contact your "
                             "system administrator to have your password reset.")
+
+                remember_me = st.checkbox("Remember me", key="remember_me", value=True)
 
                 st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
