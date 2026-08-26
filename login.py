@@ -298,13 +298,16 @@ def show_login_page() -> bool:
     }
 
     /* ── Spread Login/Register tabs to opposite ends instead of clustering
-       on the left ── */
-    .st-key-login_card .stTabs [data-baseweb="tab-list"] {
+       on the left. Uses [role="tablist"]/[role="tab"] (stable ARIA attributes)
+       instead of [data-baseweb="tab-list"] — DevTools confirmed this
+       Streamlit version renders tabs via React Aria, which doesn't set
+       data-baseweb at all, so the old selector never matched anything. ── */
+    .st-key-login_card [role="tablist"] {
         display:flex !important;
         justify-content:space-between !important;
         width:100% !important;
     }
-    .st-key-login_card .stTabs [data-baseweb="tab"] {
+    .st-key-login_card [role="tab"] {
         flex-shrink:0;
     }
 
