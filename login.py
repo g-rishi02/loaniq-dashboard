@@ -243,9 +243,8 @@ def show_login_page() -> bool:
                     letter-spacing:-0.03em; text-align:center; margin-bottom:0.25rem; }
     .login-sub    { font-size:0.92rem; color:#64748B; text-align:center;
                     font-weight:500; margin-bottom:1.75rem; }
-    .login-notice { font-size:0.78rem; color:#065F46; text-align:center;
-                    margin-top:1rem; padding:0.6rem 0.75rem; background:#F0FDFA;
-                    border:1px solid #A7F3D0; border-radius:8px; }
+    .login-notice { font-size:0.78rem; color:#64748B; text-align:center;
+                    margin-top:1rem; }
     .login-footer { font-size:0.74rem; color:#94A3B8; text-align:center;
                     margin-top:1.5rem; padding-top:1rem; border-top:1px solid #E2E8F0;
                     line-height:1.8; }
@@ -432,8 +431,7 @@ def show_login_page() -> bool:
 
                 st.markdown("""
                 <div class="login-notice">
-                    🛡️ Account locked after 5 failed attempts for 30 minutes
-                    (CyberSecurity Malaysia policy).
+                    Note : 🛡️ Account locked after 5 failed attempts for 30 minutes
                 </div>
                 """, unsafe_allow_html=True)
 
