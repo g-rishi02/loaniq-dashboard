@@ -255,15 +255,6 @@ def show_login_page() -> bool:
     .pw-check-fail { color:#EF4444; }
     .pw-check-idle { color:#94A3B8; }
     .forgot-link { font-size:0.85rem; color:#10B981; font-weight:600; }
-    .trust-strip { background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px;
-                   padding:1.25rem 1.5rem; margin-top:1.5rem;
-                   box-shadow:0 1px 3px rgba(15,23,42,0.05); }
-    .trust-item { display:flex; align-items:flex-start; gap:0.6rem; }
-    .trust-icon { width:38px; height:38px; border-radius:50%; background:#ECFDF5;
-                  display:flex; align-items:center; justify-content:center;
-                  font-size:1.1rem; flex-shrink:0; }
-    .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; }
-    .trust-desc  { font-size:0.74rem; color:#64748B; line-height:1.4; margin-top:2px; }
 
     /* ── The actual white "card" wrapping the tabs/form (real bordered container) ── */
     div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-testid="stTabs"]) {
@@ -273,6 +264,22 @@ def show_login_page() -> bool:
         box-shadow:0 4px 24px rgba(15,23,42,0.08) !important;
         padding:0.5rem 0.5rem 0.25rem 0.5rem;
     }
+
+    /* ── Trust badge strip: the real bordered container, distinguished from
+       the login card by the fact it contains .trust-item elements ── */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.trust-item) {
+        background:#FFFFFF !important;
+        border:1px solid #E2E8F0 !important;
+        border-radius:16px !important;
+        box-shadow:0 1px 4px rgba(15,23,42,0.05) !important;
+        padding:1.5rem 1.75rem !important;
+    }
+    .trust-item { display:flex; align-items:center; gap:0.75rem; }
+    .trust-icon { width:42px; height:42px; border-radius:50%; background:#ECFDF5;
+                  display:flex; align-items:center; justify-content:center;
+                  font-size:1.2rem; flex-shrink:0; }
+    .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; line-height:1.3; }
+    .trust-desc  { font-size:0.72rem; color:#64748B; line-height:1.4; margin-top:3px; }
 
     /* ── "Forgot password?" styled as a plain link, not a boxed button.
        Two overlapping selectors for reliability:
@@ -399,27 +406,29 @@ def show_login_page() -> bool:
                         )
                         st.rerun()
 
-        # ── Trust badge strip (outside the card, matching reference layout) ─────
-        st.markdown('<div class="trust-strip">', unsafe_allow_html=True)
-        tb1, tb2, tb3, tb4 = st.columns(4)
-        trust_items = [
-            (tb1, "🛡️", "Secure & Compliant", "Aligned with cybersecurity best practices"),
-            (tb2, "📊", "AI-Powered Insights", "Smarter decisions through advanced analytics"),
-            (tb3, "🔒", "Data Protection", "Your data is safe with enterprise-grade security"),
-            (tb4, "🕓", "Reliable & Available", "Built for performance and reliability"),
-        ]
-        for col, icon, title, desc in trust_items:
-            with col:
-                st.markdown(f"""
-                <div class="trust-item">
-                    <div class="trust-icon">{icon}</div>
-                    <div>
-                        <div class="trust-title">{title}</div>
-                        <div class="trust-desc">{desc}</div>
+        # ── Trust badge strip — real bordered container (markdown divs can't
+        #    actually wrap st.columns, which was leaving an empty white box
+        #    above unstyled content) ────────────────────────────────────────
+        st.markdown('<div style="height:1.25rem"></div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            tb1, tb2, tb3, tb4 = st.columns(4, gap="medium")
+            trust_items = [
+                (tb1, "🛡️", "Secure & Compliant", "Aligned with cybersecurity best practices"),
+                (tb2, "📊", "AI-Powered Insights", "Smarter decisions through advanced analytics"),
+                (tb3, "🔒", "Data Protection", "Your data is safe with enterprise-grade security"),
+                (tb4, "🕓", "Reliable & Available", "Built for performance and reliability"),
+            ]
+            for col, icon, title, desc in trust_items:
+                with col:
+                    st.markdown(f"""
+                    <div class="trust-item">
+                        <div class="trust-icon">{icon}</div>
+                        <div>
+                            <div class="trust-title">{title}</div>
+                            <div class="trust-desc">{desc}</div>
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
         st.markdown("""
         <div class="login-footer">
