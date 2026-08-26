@@ -275,11 +275,13 @@ def show_login_page() -> bool:
     }
 
     /* ── "Forgot password?" styled as a plain link, not a boxed button.
-       Selector matches styles.py's secondary-button specificity exactly
-       (.main .stButton > button[data-baseweb="button"][kind="secondary"])
-       so this override actually wins — a lower-specificity selector here
-       was being beaten by styles.py's more specific rule. ── */
-    .main .stButton > button[data-baseweb="button"][kind="secondary"] {
+       Two overlapping selectors for reliability:
+       (1) matches styles.py's secondary-button specificity exactly, and
+       (2) targets this exact widget by its key (Streamlit adds a
+       .st-key-<key> class to the widget's wrapper div), which cannot be
+       out-specified by any app-wide rule since it's unique to this button. ── */
+    .main .stButton > button[data-baseweb="button"][kind="secondary"],
+    .st-key-forgot_pw_btn button {
         background:transparent !important;
         border:none !important;
         box-shadow:none !important;
@@ -287,7 +289,8 @@ def show_login_page() -> bool:
         font-weight:600 !important;
         font-size:0.85rem !important;
     }
-    .main .stButton > button[data-baseweb="button"][kind="secondary"]:hover {
+    .main .stButton > button[data-baseweb="button"][kind="secondary"]:hover,
+    .st-key-forgot_pw_btn button:hover {
         background:transparent !important;
         text-decoration:underline;
         transform:none !important;
@@ -312,8 +315,8 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">LoanIQ</div>
-            <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
+            <div class="login-title">Loan Decision Intelligence</div>
+            <div class="login-sub">AI-Powered Smarter Lending</div>
         </div>
         """, unsafe_allow_html=True)
 
