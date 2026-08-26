@@ -273,33 +273,45 @@ def show_login_page() -> bool:
 
     /* ── Input fields need a visible fill distinct from the white card
        behind them — otherwise they're invisible against it. ── */
-    /* ── Style the raw <input> directly (guaranteed to exist as standard
-       HTML) rather than [data-baseweb="input"], which — like the tabs —
-       doesn't actually exist in this Streamlit version's DOM and was
-       silently matching nothing, making the fields invisible again. ── */
-    .st-key-login_card input {
+    /* ── Border/background moved to the stable testid wrapper (not the raw
+       input) so BOTH fields are exactly the same width regardless of the
+       password field's eye-icon button, which sits as a sibling next to
+       the input and was shrinking its own border box. The icon is
+       repositioned to float inside the field via absolute positioning. ── */
+    .st-key-login_card [data-testid="stTextInput"] {
+        width:100% !important;
+    }
+    .st-key-login_card [data-testid="stTextInput"] > div {
+        width:100% !important;
+        position:relative !important;
         background:#F8FAFC !important;
         border:1px solid #CBD5E1 !important;
         border-radius:8px !important;
-        padding-top:0.6rem !important;
-        padding-bottom:0.6rem !important;
-        width:100% !important;
         box-sizing:border-box !important;
     }
-    .st-key-login_card input:focus {
+    .st-key-login_card [data-testid="stTextInput"] > div:focus-within {
         background:#FFFFFF !important;
         border-color:#10B981 !important;
         box-shadow:0 0 0 3px rgba(16,185,129,0.12) !important;
     }
+    .st-key-login_card input {
+        background:transparent !important;
+        border:none !important;
+        padding-top:0.6rem !important;
+        padding-bottom:0.6rem !important;
+        padding-right:2.5rem !important;
+        width:100% !important;
+        box-sizing:border-box !important;
+    }
     .st-key-login_card input::placeholder {
         color:#94A3B8 !important;
     }
-    /* Width consistency via Streamlit's own stable testid (not tied to
-       whichever internal component library renders the input). ── */
-    .st-key-login_card [data-testid="stTextInput"],
-    .st-key-login_card [data-testid="stTextInput"] > div,
-    .st-key-login_card [data-testid="stTextInputRootElement"] {
-        width:100% !important;
+    /* Float the eye-toggle button inside the field instead of beside it */
+    .st-key-login_card [data-testid="stTextInput"] button {
+        position:absolute !important;
+        right:0.5rem !important;
+        top:50% !important;
+        transform:translateY(-50%) !important;
     }
     .st-key-login_card input::placeholder {
         color:#94A3B8 !important;
