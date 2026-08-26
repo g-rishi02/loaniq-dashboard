@@ -244,7 +244,7 @@ def show_login_page() -> bool:
     .login-sub    { font-size:0.92rem; color:#64748B; text-align:center;
                     font-weight:500; margin-bottom:1.75rem; }
     .login-notice { font-size:0.78rem; color:#64748B; text-align:center;
-                    margin-top:1rem; }
+                    margin-top:1rem; padding-bottom:0.5rem; }
     .login-footer { font-size:0.74rem; color:#94A3B8; text-align:center;
                     margin-top:1.5rem; padding-top:1rem; border-top:1px solid #E2E8F0;
                     line-height:1.8; }
