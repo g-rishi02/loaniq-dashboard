@@ -265,11 +265,21 @@ def show_login_page() -> bool:
     .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; }
     .trust-desc  { font-size:0.74rem; color:#64748B; line-height:1.4; margin-top:2px; }
 
-    /* ── "Forgot password?" styled as a plain link. Targeted via kind="secondary"
-       since it's the ONLY secondary button on this screen — the Login button
-       uses type="primary" so it's unaffected. (Previous :has() selector was
-       matching too broadly and accidentally de-styling the Login button too.) ── */
-    .main .stButton button[kind="secondary"] {
+    /* ── The actual white "card" wrapping the tabs/form (real bordered container) ── */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-testid="stTabs"]) {
+        background:#FFFFFF !important;
+        border:1px solid #E2E8F0 !important;
+        border-radius:18px !important;
+        box-shadow:0 4px 24px rgba(15,23,42,0.08) !important;
+        padding:0.5rem 0.5rem 0.25rem 0.5rem;
+    }
+
+    /* ── "Forgot password?" styled as a plain link, not a boxed button.
+       Selector matches styles.py's secondary-button specificity exactly
+       (.main .stButton > button[data-baseweb="button"][kind="secondary"])
+       so this override actually wins — a lower-specificity selector here
+       was being beaten by styles.py's more specific rule. ── */
+    .main .stButton > button[data-baseweb="button"][kind="secondary"] {
         background:transparent !important;
         border:none !important;
         box-shadow:none !important;
@@ -277,7 +287,8 @@ def show_login_page() -> bool:
         font-weight:600 !important;
         font-size:0.85rem !important;
     }
-    .main .stButton button[kind="secondary"]:hover {
+    .main .stButton > button[data-baseweb="button"][kind="secondary"]:hover {
+        background:transparent !important;
         text-decoration:underline;
         transform:none !important;
         box-shadow:none !important;
@@ -301,7 +312,7 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">Loan Decision Intelligence</div>
+            <div class="login-title">LoanIQ</div>
             <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
         </div>
         """, unsafe_allow_html=True)
