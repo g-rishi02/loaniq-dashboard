@@ -265,10 +265,11 @@ def show_login_page() -> bool:
     .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; }
     .trust-desc  { font-size:0.74rem; color:#64748B; line-height:1.4; margin-top:2px; }
 
-    /* ── The actual white "card" wrapping the tabs/form (st.container border=True) ── */
-    /* ── "Forgot password?" styled as a plain link, no float (float was ─────
-       breaking layout flow and pushing the Login button down) ── */
-    div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) .stButton button {
+    /* ── "Forgot password?" styled as a plain link. Targeted via kind="secondary"
+       since it's the ONLY secondary button on this screen — the Login button
+       uses type="primary" so it's unaffected. (Previous :has() selector was
+       matching too broadly and accidentally de-styling the Login button too.) ── */
+    .main .stButton button[kind="secondary"] {
         background:transparent !important;
         border:none !important;
         box-shadow:none !important;
@@ -276,7 +277,7 @@ def show_login_page() -> bool:
         font-weight:600 !important;
         font-size:0.85rem !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) .stButton button:hover {
+    .main .stButton button[kind="secondary"]:hover {
         text-decoration:underline;
         transform:none !important;
         box-shadow:none !important;
@@ -301,7 +302,7 @@ def show_login_page() -> bool:
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
             <div class="login-title">Loan Decision Intelligence</div>
-            <div class="login-sub">AI-Powered Smarter Lending</div>
+            <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
         </div>
         """, unsafe_allow_html=True)
 
