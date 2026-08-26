@@ -256,13 +256,19 @@ def show_login_page() -> bool:
     .pw-check-idle { color:#94A3B8; }
     .forgot-link { font-size:0.85rem; color:#10B981; font-weight:600; }
 
-    /* ── The actual white "card" wrapping the tabs/form (real bordered container) ── */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-testid="stTabs"]) {
+    /* ── The actual white "card" wrapping the tabs/form, targeted via the
+       container's explicit key (Streamlit generates a stable .st-key-<key>
+       class for this) rather than internal testid/:has() heuristics, which
+       proved unreliable — DevTools confirmed the old selector never matched. ── */
+    .st-key-login_card {
         background:#FFFFFF !important;
         border:1px solid #E2E8F0 !important;
         border-radius:18px !important;
         box-shadow:0 4px 24px rgba(15,23,42,0.08) !important;
         padding:0.5rem 0.5rem 0.25rem 0.5rem;
+    }
+    .st-key-login_card > div {
+        background:#FFFFFF !important;
     }
 
     /* ── "Forgot password?" styled as a plain link, not a boxed button.
@@ -312,7 +318,7 @@ def show_login_page() -> bool:
         """, unsafe_allow_html=True)
 
         # ── The actual white card, using a real bordered Streamlit container ────
-        with st.container(border=True):
+        with st.container(border=True, key="login_card"):
             tab_login, tab_register = st.tabs(["🔑 Login", "📝 Register"])
 
             # ── LOGIN TAB ─────────────────────────────────────────────────────
