@@ -266,15 +266,8 @@ def show_login_page() -> bool:
     .trust-desc  { font-size:0.74rem; color:#64748B; line-height:1.4; margin-top:2px; }
 
     /* ── The actual white "card" wrapping the tabs/form (st.container border=True) ── */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-testid="stTabs"]) {
-        background:#FFFFFF;
-        border:1px solid #E2E8F0 !important;
-        border-radius:18px !important;
-        box-shadow:0 4px 24px rgba(15,23,42,0.06);
-        padding:0.5rem 0.5rem 0.25rem 0.5rem;
-    }
-
-    /* ── Make the "Forgot password?" button look like a plain text link ── */
+    /* ── "Forgot password?" styled as a plain link, no float (float was ─────
+       breaking layout flow and pushing the Login button down) ── */
     div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) .stButton button {
         background:transparent !important;
         border:none !important;
@@ -282,14 +275,14 @@ def show_login_page() -> bool:
         color:#10B981 !important;
         font-weight:600 !important;
         font-size:0.85rem !important;
-        padding:0.5rem 0 !important;
-        width:auto !important;
-        float:right;
     }
     div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) .stButton button:hover {
         text-decoration:underline;
         transform:none !important;
         box-shadow:none !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) {
+        align-items:center;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -312,89 +305,87 @@ def show_login_page() -> bool:
         </div>
         """, unsafe_allow_html=True)
 
-        tab_login, tab_register = st.tabs(["🔑 Login", "📝 Register"])
+        # ── The actual white card, using a real bordered Streamlit container ────
+        with st.container(border=True):
+            tab_login, tab_register = st.tabs(["🔑 Login", "📝 Register"])
 
-        # ── LOGIN TAB ─────────────────────────────────────────────────────────
-        with tab_login:
-            st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
-            username_in = st.text_input("👤  Username", placeholder="Enter your username",
-                                        key="login_username")
-            password_in = st.text_input("🔒  Password", type="password",
-                                        placeholder="Enter your password",
-                                        key="login_password")
+            # ── LOGIN TAB ─────────────────────────────────────────────────────
+            with tab_login:
+                st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+                username_in = st.text_input("Username", placeholder="Enter your username",
+                                            key="login_username")
+                password_in = st.text_input("Password", type="password",
+                                            placeholder="Enter your password",
+                                            key="login_password")
 
-            rem_col, forgot_col = st.columns([1, 1])
-            with rem_col:
-                remember_me = st.checkbox("Remember me", key="remember_me", value=True)
-            with forgot_col:
-                forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
-                                            use_container_width=True)
-            if forgot_clicked:
-                st.info("Password reset isn't self-service yet — please contact your "
-                        "system administrator to have your password reset.")
+                rem_col, forgot_col = st.columns([1, 1])
+                with rem_col:
+                    remember_me = st.checkbox("Remember me", key="remember_me", value=True)
+                with forgot_col:
+                    forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
+                                                use_container_width=False)
+                if forgot_clicked:
+                    st.info("Password reset isn't self-service yet — please contact your "
+                            "system administrator to have your password reset.")
 
-            st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+                st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
-            if st.button("🔑 Login", type="primary",
-                         use_container_width=True, key="btn_login"):
-                if not username_in or not password_in:
-                    st.error("Please enter both username and password.")
-                else:
-                    ok, msg = _login(username_in, password_in)
-                    if ok:
-                        st.session_state.logged_in = True
-                        st.session_state.username  = username_in.strip().lower()
-                        st.session_state.remember_me_choice = remember_me
-                        st.success(f"Welcome back, {username_in.strip()}! 👋")
-                        st.rerun()
+                if st.button("🔑 Login", type="primary",
+                             use_container_width=True, key="btn_login"):
+                    if not username_in or not password_in:
+                        st.error("Please enter both username and password.")
                     else:
-                        st.error(msg)
+                        ok, msg = _login(username_in, password_in)
+                        if ok:
+                            st.session_state.logged_in = True
+                            st.session_state.username  = username_in.strip().lower()
+                            st.session_state.remember_me_choice = remember_me
+                            st.success(f"Welcome back, {username_in.strip()}! 👋")
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
-            if not _user_exists():
-                st.info("No accounts yet — go to the **Register** tab to create one first.")
+                if not _user_exists():
+                    st.info("No accounts yet — go to the **Register** tab to create one first.")
 
-            st.markdown("""
-            <div class="login-notice">
-                🛡️ Account locked after 5 failed attempts for 30 minutes
-                (CyberSecurity Malaysia policy).
-            </div>
-            """, unsafe_allow_html=True)
+                st.markdown("""
+                <div class="login-notice">
+                    🛡️ Account locked after 5 failed attempts for 30 minutes
+                    (CyberSecurity Malaysia policy).
+                </div>
+                """, unsafe_allow_html=True)
 
-        # ── REGISTER TAB — connected custom component (no duplicate form) ──────
-        with tab_register:
-            st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+            # ── REGISTER TAB — connected custom component (no duplicate form) ──
+            with tab_register:
+                st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
-            # Pass the last server response back into the component so it can
-            # display a success/error message inline, without a second form.
-            last_ok  = st.session_state.get("_reg_last_ok")
-            last_msg = st.session_state.get("_reg_last_msg")
+                # Pass the last server response back into the component so it can
+                # display a success/error message inline, without a second form.
+                last_ok  = st.session_state.get("_reg_last_ok")
+                last_msg = st.session_state.get("_reg_last_msg")
 
-            result = _register_form(
-                server_message=last_msg,
-                server_ok=last_ok,
-                key="register_form_component",
-            )
+                result = _register_form(
+                    server_message=last_msg,
+                    server_ok=last_ok,
+                    key="register_form_component",
+                )
 
-            # result is None until the JS side calls setComponentValue().
-            # Each submission carries a unique submit_id so we only process
-            # a given click once, even though Streamlit reruns the script.
-            if result and result.get("action") == "register":
-                submit_id = result.get("submit_id")
-                if submit_id != st.session_state.get("_reg_last_submit_id"):
-                    st.session_state._reg_last_submit_id = submit_id
-                    ok, msg = _register(result.get("u", ""), result.get("p", ""))
-                    st.session_state._reg_last_ok  = ok
-                    st.session_state._reg_last_msg = (
-                        f"✅ {msg} Switch to the Login tab to sign in." if ok else f"✗ {msg}"
-                    )
-                    st.rerun()
+                # result is None until the JS side calls setComponentValue().
+                # Each submission carries a unique submit_id so we only process
+                # a given click once, even though Streamlit reruns the script.
+                if result and result.get("action") == "register":
+                    submit_id = result.get("submit_id")
+                    if submit_id != st.session_state.get("_reg_last_submit_id"):
+                        st.session_state._reg_last_submit_id = submit_id
+                        ok, msg = _register(result.get("u", ""), result.get("p", ""))
+                        st.session_state._reg_last_ok  = ok
+                        st.session_state._reg_last_msg = (
+                            f"✅ {msg} Switch to the Login tab to sign in." if ok else f"✗ {msg}"
+                        )
+                        st.rerun()
 
-        st.markdown('<div style="height:0.75rem"></div>', unsafe_allow_html=True)
-
-        # ── Trust badge strip ────────────────────────────────────────────────
-        st.markdown("""
-        <div class="trust-strip">
-        """, unsafe_allow_html=True)
+        # ── Trust badge strip (outside the card, matching reference layout) ─────
+        st.markdown('<div class="trust-strip">', unsafe_allow_html=True)
         tb1, tb2, tb3, tb4 = st.columns(4)
         trust_items = [
             (tb1, "🛡️", "Secure & Compliant", "Aligned with cybersecurity best practices"),

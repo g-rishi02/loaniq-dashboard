@@ -3,15 +3,15 @@
 <head>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
-  body { background:transparent; padding:4px 0; color:#F1F5F9; }
-  .field-label { font-size:0.82rem; font-weight:600; color:#CBD5E1;
+  body { background:transparent; padding:4px 0; color:#0F172A; }
+  .field-label { font-size:0.82rem; font-weight:600; color:#334155;
                   margin-bottom:6px; display:block; }
   .field-wrap  { position:relative; margin-bottom:4px; }
-  input { width:100%; padding:10px 40px 10px 12px; background:#0F2340;
-           border:1px solid #1E3A5F; border-radius:6px; color:#F1F5F9;
+  input { width:100%; padding:10px 40px 10px 12px; background:#FFFFFF;
+           border:1px solid #E2E8F0; border-radius:6px; color:#0F172A;
            font-size:0.88rem; outline:none; transition:border-color 0.2s; }
-  input:focus { border-color:#00D4FF; }
-  input::placeholder { color:#334155; }
+  input:focus { border-color:#10B981; }
+  input::placeholder { color:#94A3B8; }
   .toggle-pw { position:absolute; right:10px; top:50%; transform:translateY(-50%);
                 background:none; border:none; color:#64748B; cursor:pointer;
                 font-size:1rem; padding:0; }
@@ -19,26 +19,26 @@
                 font-size:0.75rem; line-height:1.85; margin:5px 0 10px 0; }
   .check { transition:color 0.15s; }
   .check.pass { color:#10B981; } .check.fail { color:#EF4444; }
-  .check.idle { color:#475569; }
+  .check.idle { color:#94A3B8; }
   .strength-bar-wrap { margin:4px 0 6px 0; }
   .strength-label { display:flex; justify-content:space-between;
                      font-size:0.73rem; margin-bottom:4px; color:#64748B; }
-  .strength-bar  { height:5px; background:#1E3A5F; border-radius:3px; overflow:hidden; }
+  .strength-bar  { height:5px; background:#E2E8F0; border-radius:3px; overflow:hidden; }
   .strength-fill { height:100%; border-radius:3px; transition:width 0.25s,background 0.25s; }
   .match-msg { font-size:0.75rem; margin:3px 0 10px 0; }
   .match-ok   { color:#10B981; } .match-fail { color:#EF4444; }
-  .notice { font-size:0.70rem; color:#475569; border-top:1px solid #1E3A5F;
+  .notice { font-size:0.70rem; color:#64748B; border-top:1px solid #E2E8F0;
              padding-top:8px; margin-top:6px; line-height:1.6; }
-  .notice strong { color:#64748B; }
-  .submit-btn { width:100%; padding:11px; background:#00D4FF; color:#0A1628;
+  .notice strong { color:#334155; }
+  .submit-btn { width:100%; padding:11px; background:#10B981; color:#FFFFFF;
                  border:none; border-radius:6px; font-size:0.88rem; font-weight:700;
                  cursor:pointer; margin-top:10px; transition:opacity 0.2s; }
   .submit-btn:hover { opacity:0.88; }
-  .submit-btn:disabled { background:#1E3A5F; color:#475569; cursor:not-allowed; }
+  .submit-btn:disabled { background:#E2E8F0; color:#94A3B8; cursor:not-allowed; }
   .mb { margin-bottom:12px; }
   .server-msg { font-size:0.8rem; padding:8px 10px; border-radius:6px; margin-top:8px; }
-  .server-msg.ok  { background:rgba(16,185,129,0.12); color:#10B981; border:1px solid rgba(16,185,129,0.3); }
-  .server-msg.err { background:rgba(239,68,68,0.12);  color:#EF4444; border:1px solid rgba(239,68,68,0.3); }
+  .server-msg.ok  { background:rgba(16,185,129,0.10); color:#065F46; border:1px solid rgba(16,185,129,0.3); }
+  .server-msg.err { background:rgba(239,68,68,0.10);  color:#991B1B; border:1px solid rgba(239,68,68,0.3); }
 </style>
 </head>
 <body>
