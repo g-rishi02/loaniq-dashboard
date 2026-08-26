@@ -1,442 +1,950 @@
-"""
-LoanIQ — Login / Register Module (PostgreSQL version)
-Security standards:
-- CyberSecurity Malaysia / NACSA
-- NIST SP 800-63B
-- ISO/IEC 27001
-"""
+# ──────────────────────────────────────────────────────────────────────────────
+# UI
+# ──────────────────────────────────────────────────────────────────────────────
 
-import streamlit as st
-import streamlit.components.v1 as components
-import hashlib
-import re
-import os
-from datetime import datetime, timedelta
-from db import get_connection, init_all_tables
-
-# ── Custom component: the fancy HTML/JS register form, wired to Python ─────────
-# This is a local Streamlit Custom Component (no npm/React build needed).
-# It lives at ./components/register_form/index.html relative to this file.
-_COMPONENT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               "components", "register_form")
-_register_form = components.declare_component("register_form", path=_COMPONENT_DIR)
-
-# ── Constants ──────────────────────────────────────────────────────────────────
-MAX_FAILED_ATTEMPTS = 5
-LOCKOUT_MINUTES     = 30
-PASSWORD_HISTORY    = 5
-MIN_PASSWORD_LEN    = 8
-MAX_PASSWORD_LEN    = 128
-MIN_USERNAME_LEN    = 4
-MAX_USERNAME_LEN    = 30
-
-BLOCKED_USERNAMES = {
-    "admin", "administrator", "user", "test", "guest", "root", "superuser",
-    "loaniq", "system", "support", "helpdesk", "staff", "manager", "demo",
-    "default", "login", "password", "null", "none"
-}
-
-# ── Hashing (salted SHA-256) ───────────────────────────────────────────────────
-def _generate_salt() -> str:
-    return os.urandom(32).hex()
-
-def _hash(password: str, salt: str) -> str:
-    return hashlib.sha256((salt + password).encode()).hexdigest()
-
-# ── Validation ─────────────────────────────────────────────────────────────────
-def _validate_username(username: str):
-    u = username.strip()
-    if len(u) < MIN_USERNAME_LEN:
-        return False, f"Username must be at least {MIN_USERNAME_LEN} characters."
-    if len(u) > MAX_USERNAME_LEN:
-        return False, f"Username cannot exceed {MAX_USERNAME_LEN} characters."
-    if not u[0].isalpha():
-        return False, "Username must start with a letter."
-    if not re.match(r'^[a-zA-Z0-9._-]+$', u):
-        return False, "Only letters, numbers, dots, underscores and hyphens allowed."
-    if u.lower() in BLOCKED_USERNAMES:
-        return False, f"'{u}' is a reserved name. Please choose another."
-    if re.match(r'^\d{6,}', u):
-        return False, "Avoid using NRIC or ID numbers as your username."
-    return True, ""
-
-def _check_password_requirements(password: str) -> dict:
-    return {
-        "length":       len(password) >= MIN_PASSWORD_LEN,
-        "uppercase":    bool(re.search(r'[A-Z]', password)),
-        "lowercase":    bool(re.search(r'[a-z]', password)),
-        "number":       bool(re.search(r'[0-9]', password)),
-        "special":      bool(re.search(r'[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\;\'`~/]', password)),
-        "no_spaces":    ' ' not in password,
-        "not_too_long": len(password) <= MAX_PASSWORD_LEN,
-    }
-
-def _password_all_pass(checks: dict) -> bool:
-    return all(checks.values())
-
-def _password_strength(password: str) -> tuple:
-    checks = _check_password_requirements(password)
-    score  = sum(checks.values())
-    if score <= 3:   return "Weak",        "#EF4444", 20
-    elif score == 4: return "Fair",        "#FB923C", 45
-    elif score == 5: return "Good",        "#F59E0B", 70
-    elif score == 6: return "Strong",      "#10B981", 90
-    else:            return "Very Strong", "#00D4FF", 100
-
-# ── Password history ───────────────────────────────────────────────────────────
-def _check_password_history(user_id: int, new_password: str) -> bool:
-    con = get_connection()
-    cur = con.cursor()
-    cur.execute(
-        """SELECT hash, salt FROM password_history
-           WHERE user_id=%s ORDER BY changed_at DESC LIMIT %s""",
-        (user_id, PASSWORD_HISTORY)
-    )
-    rows = cur.fetchall()
-    cur.close(); con.close()
-    for old_hash, old_salt in rows:
-        if _hash(new_password, old_salt) == old_hash:
-            return True
-    return False
-
-def _save_password_history(user_id: int, pw_hash: str, salt: str):
-    con = get_connection()
-    cur = con.cursor()
-    cur.execute(
-        "INSERT INTO password_history (user_id, hash, salt, changed_at) VALUES (%s,%s,%s,%s)",
-        (user_id, pw_hash, salt, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    )
-    con.commit(); cur.close(); con.close()
-
-# ── Register ───────────────────────────────────────────────────────────────────
-def _register(username: str, password: str):
-    u_ok, u_err = _validate_username(username)
-    if not u_ok:
-        return False, u_err
-
-    checks = _check_password_requirements(password)
-    if not _password_all_pass(checks):
-        return False, "Password does not meet all requirements."
-
-    salt    = _generate_salt()
-    pw_hash = _hash(password, salt)
-
-    try:
-        con = get_connection()
-        cur = con.cursor()
-        cur.execute(
-            """INSERT INTO users
-               (username, password_hash, salt, created_at, failed_attempts)
-               VALUES (%s,%s,%s,%s,0) RETURNING id""",
-            (username.strip().lower(), pw_hash, salt,
-             datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        )
-        user_id = cur.fetchone()[0]
-        con.commit(); cur.close(); con.close()
-        _save_password_history(user_id, pw_hash, salt)
-        return True, "Account created successfully."
-    except Exception as e:
-        if "unique" in str(e).lower():
-            return False, "Username already taken. Please choose another."
-        return False, f"Registration error: {str(e)}"
-
-# ── Login ──────────────────────────────────────────────────────────────────────
-def _login(username: str, password: str):
-    try:
-        con = get_connection()
-        cur = con.cursor()
-        cur.execute(
-            """SELECT id, password_hash, salt, failed_attempts, locked_until
-               FROM users WHERE username=%s""",
-            (username.strip().lower(),)
-        )
-        row = cur.fetchone()
-
-        if row is None:
-            cur.close(); con.close()
-            return False, "Username not found. Please register first."
-
-        user_id, pw_hash, salt, failed, locked_until = row
-
-        # Lockout check
-        if locked_until:
-            lock_time = datetime.strptime(locked_until, "%Y-%m-%d %H:%M:%S")
-            if datetime.now() < lock_time:
-                remaining = int((lock_time - datetime.now()).total_seconds() / 60) + 1
-                cur.close(); con.close()
-                return False, (
-                    f"🔒 Account locked after {MAX_FAILED_ATTEMPTS} failed attempts. "
-                    f"Try again in {remaining} minute(s)."
-                )
-            else:
-                cur.execute(
-                    "UPDATE users SET failed_attempts=0, locked_until=NULL WHERE id=%s",
-                    (user_id,)
-                )
-                con.commit()
-                failed = 0
-
-        # Password check
-        if _hash(password, salt) != pw_hash:
-            new_failed = failed + 1
-            if new_failed >= MAX_FAILED_ATTEMPTS:
-                locked = (datetime.now() + timedelta(minutes=LOCKOUT_MINUTES)
-                          ).strftime("%Y-%m-%d %H:%M:%S")
-                cur.execute(
-                    "UPDATE users SET failed_attempts=%s, locked_until=%s WHERE id=%s",
-                    (new_failed, locked, user_id)
-                )
-                con.commit(); cur.close(); con.close()
-                return False, (
-                    f"🔒 Account locked — {MAX_FAILED_ATTEMPTS} failed attempts. "
-                    f"Wait {LOCKOUT_MINUTES} minutes before trying again."
-                )
-            else:
-                cur.execute(
-                    "UPDATE users SET failed_attempts=%s WHERE id=%s",
-                    (new_failed, user_id)
-                )
-                con.commit(); cur.close(); con.close()
-                remaining_tries = MAX_FAILED_ATTEMPTS - new_failed
-                return False, (
-                    f"Incorrect password. "
-                    f"{remaining_tries} attempt(s) remaining before account is locked."
-                )
-
-        # Success
-        cur.execute(
-            "UPDATE users SET failed_attempts=0, locked_until=NULL, last_login=%s WHERE id=%s",
-            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id)
-        )
-        con.commit(); cur.close(); con.close()
-        return True, "Login successful."
-
-    except Exception as e:
-        return False, f"Login error: {str(e)}"
-
-def _user_exists() -> bool:
-    try:
-        con = get_connection()
-        cur = con.cursor()
-        cur.execute("SELECT COUNT(*) FROM users")
-        count = cur.fetchone()[0]
-        cur.close(); con.close()
-        return count > 0
-    except Exception:
-        return False
-
-# ── UI ─────────────────────────────────────────────────────────────────────────
 def show_login_page() -> bool:
-    """Returns True if logged in, False if not."""
+    """
+    Professional LoanIQ Login / Register page.
+
+    Returns:
+        True  -> user is logged in
+        False -> user remains on login page
+    """
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # INITIALISE DATABASE
+    # ──────────────────────────────────────────────────────────────────────────
+
     try:
         init_all_tables()
     except Exception as e:
-        st.error(f"❌ Database connection failed: {str(e)}\n\nCheck your DATABASE_URL in .env or Streamlit secrets.")
+        st.error(
+            f"Database connection failed: {str(e)}\n\n"
+            "Please check your DATABASE_URL in .env or Streamlit secrets."
+        )
         st.stop()
 
+    # Already logged in
     if st.session_state.get("logged_in"):
         return True
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # PROFESSIONAL LOANIQ STYLING
+    # ──────────────────────────────────────────────────────────────────────────
+
     st.markdown("""
     <style>
-    .login-title  { font-size:1.9rem; font-weight:800; color:#0F172A;
-                    letter-spacing:-0.03em; text-align:center; margin-bottom:0.25rem; }
-    .login-sub    { font-size:0.92rem; color:#64748B; text-align:center;
-                    font-weight:500; margin-bottom:1.75rem; }
-    .login-notice { font-size:0.78rem; color:#065F46; text-align:center;
-                    margin-top:1rem; padding:0.6rem 0.75rem; background:#F0FDFA;
-                    border:1px solid #A7F3D0; border-radius:8px; }
-    .login-footer { font-size:0.74rem; color:#94A3B8; text-align:center;
-                    margin-top:1.5rem; padding-top:1rem; border-top:1px solid #E2E8F0;
-                    line-height:1.8; }
-    .pw-checklist { display:grid; grid-template-columns:1fr 1fr; gap:2px 16px;
-                     font-size:0.78rem; line-height:1.9; margin:6px 0 4px 0; }
-    .pw-check-pass { color:#10B981; }
-    .pw-check-fail { color:#EF4444; }
-    .pw-check-idle { color:#94A3B8; }
-    .forgot-link { font-size:0.85rem; color:#10B981; font-weight:600; }
 
-    /* ── The actual white "card" wrapping the tabs/form (real bordered container) ── */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-testid="stTabs"]) {
-        background:#FFFFFF !important;
-        border:1px solid #E2E8F0 !important;
-        border-radius:18px !important;
-        box-shadow:0 4px 24px rgba(15,23,42,0.08) !important;
-        padding:0.5rem 0.5rem 0.25rem 0.5rem;
+    /* ═══════════════════════════════════════════════════════════════════════
+       GLOBAL PAGE
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .stApp {
+        background:
+            radial-gradient(
+                circle at 10% 10%,
+                rgba(16, 185, 129, 0.06),
+                transparent 28%
+            ),
+            linear-gradient(
+                135deg,
+                #F8FAFC 0%,
+                #F1F5F9 100%
+            );
     }
 
-    /* ── Trust badge strip: the real bordered container, distinguished from
-       the login card by the fact it contains .trust-item elements ── */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.trust-item) {
-        background:#FFFFFF !important;
-        border:1px solid #E2E8F0 !important;
-        border-radius:16px !important;
-        box-shadow:0 1px 4px rgba(15,23,42,0.05) !important;
-        padding:1.5rem 1.75rem !important;
+    .main .block-container {
+        max-width: 1180px !important;
+        padding-top: 3rem !important;
+        padding-bottom: 2rem !important;
     }
-    .trust-item { display:flex; align-items:center; gap:0.75rem; }
-    .trust-icon { width:42px; height:42px; border-radius:50%; background:#ECFDF5;
-                  display:flex; align-items:center; justify-content:center;
-                  font-size:1.2rem; flex-shrink:0; }
-    .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; line-height:1.3; }
-    .trust-desc  { font-size:0.72rem; color:#64748B; line-height:1.4; margin-top:3px; }
 
-    /* ── "Forgot password?" styled as a plain link, not a boxed button.
-       Two overlapping selectors for reliability:
-       (1) matches styles.py's secondary-button specificity exactly, and
-       (2) targets this exact widget by its key (Streamlit adds a
-       .st-key-<key> class to the widget's wrapper div), which cannot be
-       out-specified by any app-wide rule since it's unique to this button. ── */
-    .main .stButton > button[data-baseweb="button"][kind="secondary"],
+    /* Hide Streamlit branding */
+    #MainMenu {
+        visibility: hidden;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
+    header {
+        background: transparent !important;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       MAIN LOGIN CONTAINER
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .login-shell {
+        width: 100%;
+        max-width: 1080px;
+        margin: 0 auto;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow:
+            0 20px 60px rgba(15, 23, 42, 0.10),
+            0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LEFT BRAND PANEL
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .brand-panel {
+        background:
+            radial-gradient(
+                circle at 80% 15%,
+                rgba(16, 185, 129, 0.18),
+                transparent 35%
+            ),
+            linear-gradient(
+                145deg,
+                #0B1F36 0%,
+                #102A43 55%,
+                #0F3D3A 100%
+            );
+
+        min-height: 610px;
+        padding: 3.5rem 3rem;
+        color: #FFFFFF;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .brand-panel::after {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 50%;
+        right: -100px;
+        bottom: -80px;
+    }
+
+    .brand-logo {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        background: rgba(16, 185, 129, 0.14);
+        border: 1px solid rgba(16, 185, 129, 0.30);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 2.2rem;
+    }
+
+    .brand-logo svg {
+        width: 30px;
+        height: 30px;
+    }
+
+    .brand-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: #FFFFFF;
+        margin-bottom: 0.5rem;
+    }
+
+    .brand-heading {
+        font-size: 2.35rem;
+        line-height: 1.12;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        margin: 0;
+        color: #FFFFFF;
+    }
+
+    .brand-heading span {
+        color: #34D399;
+    }
+
+    .brand-description {
+        margin-top: 1.3rem;
+        font-size: 0.96rem;
+        line-height: 1.7;
+        color: #CBD5E1;
+        max-width: 410px;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       FEATURE LIST
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .feature-list {
+        margin-top: 2.5rem;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.9rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .feature-icon {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        border-radius: 9px;
+        background: rgba(52, 211, 153, 0.10);
+        border: 1px solid rgba(52, 211, 153, 0.20);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #34D399;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .feature-title {
+        font-size: 0.84rem;
+        font-weight: 700;
+        color: #F8FAFC;
+        margin-bottom: 0.15rem;
+    }
+
+    .feature-description {
+        font-size: 0.72rem;
+        line-height: 1.5;
+        color: #94A3B8;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LEFT PANEL BOTTOM
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .brand-bottom {
+        position: absolute;
+        bottom: 2rem;
+        left: 3rem;
+        right: 3rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid rgba(255,255,255,0.10);
+        font-size: 0.68rem;
+        color: #64748B;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       RIGHT LOGIN PANEL
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .form-panel {
+        min-height: 610px;
+        padding: 3.5rem 3.5rem 2.5rem 3.5rem;
+        background: #FFFFFF;
+    }
+
+    .form-header {
+        margin-bottom: 2rem;
+    }
+
+    .form-title {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #0F172A;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.35rem;
+    }
+
+    .form-subtitle {
+        font-size: 0.84rem;
+        color: #64748B;
+        line-height: 1.5;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       STREAMLIT TABS
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2rem;
+        border-bottom: 1px solid #E2E8F0;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-size: 0.84rem !important;
+        font-weight: 600 !important;
+        color: #64748B !important;
+        padding: 0.65rem 0.1rem !important;
+        background: transparent !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        color: #059669 !important;
+    }
+
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: #10B981 !important;
+        height: 2px !important;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       INPUTS
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .stTextInput label {
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        color: #334155 !important;
+    }
+
+    .stTextInput input {
+        height: 46px !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 9px !important;
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        font-size: 0.84rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stTextInput input:hover {
+        border-color: #94A3B8 !important;
+    }
+
+    .stTextInput input:focus {
+        border-color: #10B981 !important;
+        box-shadow: 0 0 0 3px rgba(16,185,129,0.10) !important;
+    }
+
+    .stTextInput input::placeholder {
+        color: #94A3B8 !important;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       BUTTONS
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .stButton > button {
+        border-radius: 9px !important;
+        min-height: 44px !important;
+        font-size: 0.84rem !important;
+        font-weight: 650 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* Primary login/register button */
+    .stButton > button[kind="primary"] {
+        background: #059669 !important;
+        border: 1px solid #059669 !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 12px rgba(5,150,105,0.18) !important;
+    }
+
+    .stButton > button[kind="primary"]:hover {
+        background: #047857 !important;
+        border-color: #047857 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(5,150,105,0.24) !important;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       CHECKBOX
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .stCheckbox label {
+        font-size: 0.75rem !important;
+        color: #64748B !important;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       FORGOT PASSWORD
+       ═══════════════════════════════════════════════════════════════════════ */
+
     .st-key-forgot_pw_btn button {
-        background:transparent !important;
-        border:none !important;
-        box-shadow:none !important;
-        color:#10B981 !important;
-        font-weight:600 !important;
-        font-size:0.85rem !important;
+        background: transparent !important;
+        border: none !important;
+        color: #059669 !important;
+        box-shadow: none !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        min-height: auto !important;
+        padding: 0 !important;
     }
-    .main .stButton > button[data-baseweb="button"][kind="secondary"]:hover,
+
     .st-key-forgot_pw_btn button:hover {
-        background:transparent !important;
-        text-decoration:underline;
-        transform:none !important;
-        box-shadow:none !important;
+        background: transparent !important;
+        color: #047857 !important;
+        text-decoration: underline;
+        transform: none !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) {
-        align-items:center;
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SECURITY NOTICE
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .security-notice {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-top: 1.4rem;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid #D1FAE5;
+        background: #F0FDF4;
+        border-radius: 9px;
+        color: #166534;
+        font-size: 0.70rem;
+        line-height: 1.45;
     }
+
+    .security-icon {
+        width: 27px;
+        height: 27px;
+        min-width: 27px;
+        border-radius: 50%;
+        background: #DCFCE7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       INFO MESSAGE
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .account-info {
+        margin-top: 1rem;
+        padding: 0.7rem 0.85rem;
+        border-radius: 8px;
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        font-size: 0.73rem;
+        color: #64748B;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    .login-footer {
+        margin-top: 2rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid #E2E8F0;
+        text-align: center;
+        font-size: 0.66rem;
+        color: #94A3B8;
+        line-height: 1.7;
+    }
+
+    .login-footer strong {
+        color: #64748B;
+        font-weight: 650;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    @media (max-width: 900px) {
+
+        .main .block-container {
+            padding: 1.5rem !important;
+        }
+
+        .brand-panel {
+            min-height: auto;
+            padding: 2.5rem 2rem;
+        }
+
+        .form-panel {
+            min-height: auto;
+            padding: 2.5rem 2rem;
+        }
+
+        .brand-bottom {
+            position: static;
+            margin-top: 2rem;
+        }
+
+        .brand-heading {
+            font-size: 1.9rem;
+        }
+    }
+
     </style>
     """, unsafe_allow_html=True)
 
-    col_l, col_c, col_r = st.columns([1, 2, 1])
-    with col_c:
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # MAIN LAYOUT
+    # ──────────────────────────────────────────────────────────────────────────
+
+    left_col, right_col = st.columns(
+        [1, 1],
+        gap="small"
+    )
+
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # LEFT SIDE — BRAND / SYSTEM INTRODUCTION
+    # ══════════════════════════════════════════════════════════════════════════
+
+    with left_col:
 
         st.markdown("""
-        <div style="text-align:center;margin-bottom:1.5rem">
-            <svg width="72" height="72" viewBox="0 0 84 84" style="margin-bottom:0.5rem">
-                <ellipse cx="42" cy="62" rx="26" ry="9" fill="#0F2340" stroke="#0F6E56" stroke-width="2.5"/>
-                <ellipse cx="42" cy="54" rx="26" ry="9" fill="#0F2340" stroke="#0F6E56" stroke-width="2.5"/>
-                <ellipse cx="42" cy="46" rx="26" ry="9" fill="#0F2340" stroke="#1D9E75" stroke-width="2.5"/>
-                <ellipse cx="42" cy="34" rx="26" ry="9" fill="#0F2340" stroke="#10B981" stroke-width="2.8"/>
-                <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
-                      font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
-            </svg>
-            <div class="login-title">Loan Decision Intelligence</div>
-            <div class="login-sub">AI-Powered Smarter Lending</div>
+        <div class="brand-panel">
+
+            <div class="brand-logo">
+
+                <svg viewBox="0 0 48 48"
+                     fill="none"
+                     xmlns="http://www.w3.org/2000/svg">
+
+                    <ellipse
+                        cx="24"
+                        cy="12"
+                        rx="15"
+                        ry="5"
+                        stroke="#34D399"
+                        stroke-width="2.2"/>
+
+                    <path
+                        d="M9 12V20C9 22.8 15.7 25 24 25C32.3 25 39 22.8 39 20V12"
+                        stroke="#34D399"
+                        stroke-width="2.2"/>
+
+                    <path
+                        d="M9 20V28C9 30.8 15.7 33 24 33C32.3 33 39 30.8 39 28V20"
+                        stroke="#10B981"
+                        stroke-width="2.2"/>
+
+                    <path
+                        d="M9 28V36C9 38.8 15.7 41 24 41C32.3 41 39 38.8 39 36V28"
+                        stroke="#10B981"
+                        stroke-width="2.2"/>
+
+                    <text
+                        x="24"
+                        y="17"
+                        text-anchor="middle"
+                        fill="#FFFFFF"
+                        font-size="8"
+                        font-family="Arial"
+                        font-weight="700">
+                        $
+                    </text>
+
+                </svg>
+
+            </div>
+
+
+            <div class="brand-name">
+                LOANIQ
+            </div>
+
+
+            <h1 class="brand-heading">
+                Smarter Lending.<br>
+                <span>Better Decisions.</span>
+            </h1>
+
+
+            <div class="brand-description">
+                An AI-powered loan decision intelligence platform
+                designed to support smarter risk assessment,
+                customer analysis and data-driven lending decisions.
+            </div>
+
+
+            <div class="feature-list">
+
+                <div class="feature-item">
+
+                    <div class="feature-icon">
+                        AI
+                    </div>
+
+                    <div>
+                        <div class="feature-title">
+                            AI-Powered Risk Intelligence
+                        </div>
+
+                        <div class="feature-description">
+                            Machine learning models analyse borrower
+                            information and identify potential risk patterns.
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="feature-item">
+
+                    <div class="feature-icon">
+                        ↗
+                    </div>
+
+                    <div>
+                        <div class="feature-title">
+                            Data-Driven Insights
+                        </div>
+
+                        <div class="feature-description">
+                            Transform lending data into meaningful insights
+                            to support informed financial decisions.
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="feature-item">
+
+                    <div class="feature-icon">
+                        ✓
+                    </div>
+
+                    <div>
+                        <div class="feature-title">
+                            Explainable Decisions
+                        </div>
+
+                        <div class="feature-description">
+                            Provide understandable risk indicators and
+                            recommendations alongside model predictions.
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="brand-bottom">
+                LoanIQ · AI-Powered Loan Decision Intelligence
+            </div>
+
         </div>
         """, unsafe_allow_html=True)
 
-        # ── The actual white card, using a real bordered Streamlit container ────
-        with st.container(border=True):
-            tab_login, tab_register = st.tabs(["🔑 Login", "📝 Register"])
 
-            # ── LOGIN TAB ─────────────────────────────────────────────────────
-            with tab_login:
-                st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
-                username_in = st.text_input("Username", placeholder="Enter your username",
-                                            key="login_username")
-                password_in = st.text_input("Password", type="password",
-                                            placeholder="Enter your password",
-                                            key="login_password")
+    # ══════════════════════════════════════════════════════════════════════════
+    # RIGHT SIDE — LOGIN / REGISTER
+    # ══════════════════════════════════════════════════════════════════════════
 
-                rem_col, forgot_col = st.columns([1, 1])
-                with rem_col:
-                    remember_me = st.checkbox("Remember me", key="remember_me", value=True)
-                with forgot_col:
-                    forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
-                                                use_container_width=False)
-                if forgot_clicked:
-                    st.info("Password reset isn't self-service yet — please contact your "
-                            "system administrator to have your password reset.")
+    with right_col:
 
-                st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="form-panel">
 
-                if st.button("🔑 Login", type="primary",
-                             use_container_width=True, key="btn_login"):
-                    if not username_in or not password_in:
-                        st.error("Please enter both username and password.")
+            <div class="form-header">
+
+                <div class="form-title">
+                    Welcome back
+                </div>
+
+                <div class="form-subtitle">
+                    Sign in to access your LoanIQ workspace.
+                </div>
+
+            </div>
+
+        """, unsafe_allow_html=True)
+
+
+        # ──────────────────────────────────────────────────────────────────────
+        # LOGIN / REGISTER TABS
+        # ──────────────────────────────────────────────────────────────────────
+
+        tab_login, tab_register = st.tabs([
+            "Sign in",
+            "Create account"
+        ])
+
+
+        # ══════════════════════════════════════════════════════════════════════
+        # LOGIN
+        # ══════════════════════════════════════════════════════════════════════
+
+        with tab_login:
+
+            st.markdown(
+                '<div style="height:0.7rem"></div>',
+                unsafe_allow_html=True
+            )
+
+
+            username_in = st.text_input(
+                "Username",
+                placeholder="Enter your username",
+                key="login_username"
+            )
+
+
+            password_in = st.text_input(
+                "Password",
+                type="password",
+                placeholder="Enter your password",
+                key="login_password"
+            )
+
+
+            st.markdown(
+                '<div style="height:0.2rem"></div>',
+                unsafe_allow_html=True
+            )
+
+
+            rem_col, forgot_col = st.columns(
+                [1, 1]
+            )
+
+
+            with rem_col:
+
+                remember_me = st.checkbox(
+                    "Remember me",
+                    key="remember_me",
+                    value=True
+                )
+
+
+            with forgot_col:
+
+                forgot_clicked = st.button(
+                    "Forgot password?",
+                    key="forgot_pw_btn"
+                )
+
+
+            if forgot_clicked:
+
+                st.info(
+                    "Password reset is currently handled by the "
+                    "system administrator."
+                )
+
+
+            st.markdown(
+                '<div style="height:0.6rem"></div>',
+                unsafe_allow_html=True
+            )
+
+
+            # ──────────────────────────────────────────────────────────────────
+            # LOGIN BUTTON
+            # ──────────────────────────────────────────────────────────────────
+
+            if st.button(
+                "Sign in to LoanIQ",
+                type="primary",
+                use_container_width=True,
+                key="btn_login"
+            ):
+
+                if not username_in or not password_in:
+
+                    st.error(
+                        "Please enter both your username and password."
+                    )
+
+                else:
+
+                    ok, msg = _login(
+                        username_in,
+                        password_in
+                    )
+
+                    if ok:
+
+                        st.session_state.logged_in = True
+
+                        st.session_state.username = (
+                            username_in.strip().lower()
+                        )
+
+                        st.session_state.remember_me_choice = (
+                            remember_me
+                        )
+
+                        st.success(
+                            f"Welcome back, {username_in.strip()}!"
+                        )
+
+                        st.rerun()
+
                     else:
-                        ok, msg = _login(username_in, password_in)
-                        if ok:
-                            st.session_state.logged_in = True
-                            st.session_state.username  = username_in.strip().lower()
-                            st.session_state.remember_me_choice = remember_me
-                            st.success(f"Welcome back, {username_in.strip()}! 👋")
-                            st.rerun()
-                        else:
-                            st.error(msg)
 
-                if not _user_exists():
-                    st.info("No accounts yet — go to the **Register** tab to create one first.")
+                        st.error(msg)
+
+
+            # ──────────────────────────────────────────────────────────────────
+            # NO USERS MESSAGE
+            # ──────────────────────────────────────────────────────────────────
+
+            if not _user_exists():
 
                 st.markdown("""
-                <div class="login-notice">
-                    🛡️ Account locked after 5 failed attempts for 30 minutes
-                    (CyberSecurity Malaysia policy).
+                <div class="account-info">
+                    No accounts have been created yet.
+                    Select <strong>Create account</strong> to register.
                 </div>
                 """, unsafe_allow_html=True)
 
-            # ── REGISTER TAB — connected custom component (no duplicate form) ──
-            with tab_register:
-                st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
-                # Pass the last server response back into the component so it can
-                # display a success/error message inline, without a second form.
-                last_ok  = st.session_state.get("_reg_last_ok")
-                last_msg = st.session_state.get("_reg_last_msg")
+            # ──────────────────────────────────────────────────────────────────
+            # SECURITY MESSAGE
+            # ──────────────────────────────────────────────────────────────────
 
-                result = _register_form(
-                    server_message=last_msg,
-                    server_ok=last_ok,
-                    key="register_form_component",
+            st.markdown("""
+            <div class="security-notice">
+
+                <div class="security-icon">
+                    ✓
+                </div>
+
+                <div>
+                    <strong>Account protection enabled</strong><br>
+                    Your account is automatically locked after
+                    5 unsuccessful login attempts for 30 minutes.
+                </div>
+
+            </div>
+            """, unsafe_allow_html=True)
+
+
+        # ══════════════════════════════════════════════════════════════════════
+        # REGISTER
+        # ══════════════════════════════════════════════════════════════════════
+
+        with tab_register:
+
+            st.markdown(
+                '<div style="height:0.7rem"></div>',
+                unsafe_allow_html=True
+            )
+
+
+            st.markdown("""
+            <div style="
+                font-size:0.78rem;
+                color:#64748B;
+                margin-bottom:0.8rem;
+                line-height:1.5;
+            ">
+                Create your LoanIQ account to access the
+                loan decision intelligence platform.
+            </div>
+            """, unsafe_allow_html=True)
+
+
+            # Get previous registration response
+            last_ok = st.session_state.get(
+                "_reg_last_ok"
+            )
+
+            last_msg = st.session_state.get(
+                "_reg_last_msg"
+            )
+
+
+            # ──────────────────────────────────────────────────────────────────
+            # YOUR EXISTING CUSTOM REGISTER COMPONENT
+            # ──────────────────────────────────────────────────────────────────
+
+            result = _register_form(
+                server_message=last_msg,
+                server_ok=last_ok,
+                key="register_form_component"
+            )
+
+
+            # ──────────────────────────────────────────────────────────────────
+            # PROCESS REGISTRATION
+            # ──────────────────────────────────────────────────────────────────
+
+            if (
+                result
+                and result.get("action") == "register"
+            ):
+
+                submit_id = result.get(
+                    "submit_id"
                 )
 
-                # result is None until the JS side calls setComponentValue().
-                # Each submission carries a unique submit_id so we only process
-                # a given click once, even though Streamlit reruns the script.
-                if result and result.get("action") == "register":
-                    submit_id = result.get("submit_id")
-                    if submit_id != st.session_state.get("_reg_last_submit_id"):
-                        st.session_state._reg_last_submit_id = submit_id
-                        ok, msg = _register(result.get("u", ""), result.get("p", ""))
-                        st.session_state._reg_last_ok  = ok
-                        st.session_state._reg_last_msg = (
-                            f"✅ {msg} Switch to the Login tab to sign in." if ok else f"✗ {msg}"
-                        )
-                        st.rerun()
 
-        # ── Trust badge strip — real bordered container (markdown divs can't
-        #    actually wrap st.columns, which was leaving an empty white box
-        #    above unstyled content) ────────────────────────────────────────
-        st.markdown('<div style="height:1.25rem"></div>', unsafe_allow_html=True)
-        with st.container(border=True):
-            tb1, tb2, tb3, tb4 = st.columns(4, gap="medium")
-            trust_items = [
-                (tb1, "🛡️", "Secure & Compliant", "Aligned with cybersecurity best practices"),
-                (tb2, "📊", "AI-Powered Insights", "Smarter decisions through advanced analytics"),
-                (tb3, "🔒", "Data Protection", "Your data is safe with enterprise-grade security"),
-                (tb4, "🕓", "Reliable & Available", "Built for performance and reliability"),
-            ]
-            for col, icon, title, desc in trust_items:
-                with col:
-                    st.markdown(f"""
-                    <div class="trust-item">
-                        <div class="trust-icon">{icon}</div>
-                        <div>
-                            <div class="trust-title">{title}</div>
-                            <div class="trust-desc">{desc}</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                if submit_id != st.session_state.get(
+                    "_reg_last_submit_id"
+                ):
+
+                    st.session_state._reg_last_submit_id = (
+                        submit_id
+                    )
+
+
+                    ok, msg = _register(
+                        result.get("u", ""),
+                        result.get("p", "")
+                    )
+
+
+                    st.session_state._reg_last_ok = ok
+
+
+                    if ok:
+
+                        st.session_state._reg_last_msg = (
+                            f"Account created successfully. "
+                            f"Switch to Sign in to continue."
+                        )
+
+                    else:
+
+                        st.session_state._reg_last_msg = (
+                            f"{msg}"
+                        )
+
+
+                    st.rerun()
+
+
+        # ══════════════════════════════════════════════════════════════════════
+        # FOOTER
+        # ══════════════════════════════════════════════════════════════════════
 
         st.markdown("""
-        <div class="login-footer">
-            LoanIQ · AI-Powered Loan Decision Intelligence<br>
-            Universiti Teknikal Malaysia Melaka (UTeM) · FYP 2025/2026<br>
-            This system is for academic purposes only.<br>
-            Security: CyberSecurity Malaysia · NACSA · NIST SP 800-63B · ISO/IEC 27001
+            <div class="login-footer">
+
+                <strong>LoanIQ</strong> · AI-Powered Loan Decision Intelligence
+                <br>
+
+                Universiti Teknikal Malaysia Melaka (UTeM)
+                · FYP 2025/2026
+
+                <br>
+
+                Academic project · For educational purposes only
+
+                <br>
+
+                Security framework:
+                CyberSecurity Malaysia · NACSA · NIST SP 800-63B · ISO/IEC 27001
+
+            </div>
+
         </div>
         """, unsafe_allow_html=True)
+
 
     return False
