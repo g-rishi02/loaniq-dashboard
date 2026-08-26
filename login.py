@@ -254,8 +254,7 @@ def show_login_page() -> bool:
     .pw-check-pass { color:#10B981; }
     .pw-check-fail { color:#EF4444; }
     .pw-check-idle { color:#94A3B8; }
-    .forgot-link { font-size:0.85rem; color:#10B981; font-weight:600;
-                   text-align:right; padding-top:0.55rem; }
+    .forgot-link { font-size:0.85rem; color:#10B981; font-weight:600; }
     .trust-strip { background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px;
                    padding:1.25rem 1.5rem; margin-top:1.5rem;
                    box-shadow:0 1px 3px rgba(15,23,42,0.05); }
@@ -265,6 +264,33 @@ def show_login_page() -> bool:
                   font-size:1.1rem; flex-shrink:0; }
     .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; }
     .trust-desc  { font-size:0.74rem; color:#64748B; line-height:1.4; margin-top:2px; }
+
+    /* ── The actual white "card" wrapping the tabs/form (st.container border=True) ── */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-testid="stTabs"]) {
+        background:#FFFFFF;
+        border:1px solid #E2E8F0 !important;
+        border-radius:18px !important;
+        box-shadow:0 4px 24px rgba(15,23,42,0.06);
+        padding:0.5rem 0.5rem 0.25rem 0.5rem;
+    }
+
+    /* ── Make the "Forgot password?" button look like a plain text link ── */
+    div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) .stButton button {
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        color:#10B981 !important;
+        font-weight:600 !important;
+        font-size:0.85rem !important;
+        padding:0.5rem 0 !important;
+        width:auto !important;
+        float:right;
+    }
+    div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) .stButton button:hover {
+        text-decoration:underline;
+        transform:none !important;
+        box-shadow:none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -281,8 +307,8 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">LoanIQ</div>
-            <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
+            <div class="login-title">Loan Decision Intelligence</div>
+            <div class="login-sub">AI-Powered Smarter Lending</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -363,8 +389,34 @@ def show_login_page() -> bool:
                     )
                     st.rerun()
 
+        st.markdown('<div style="height:0.75rem"></div>', unsafe_allow_html=True)
+
+        # ── Trust badge strip ────────────────────────────────────────────────
         st.markdown("""
-        <div class="login-notice">
+        <div class="trust-strip">
+        """, unsafe_allow_html=True)
+        tb1, tb2, tb3, tb4 = st.columns(4)
+        trust_items = [
+            (tb1, "🛡️", "Secure & Compliant", "Aligned with cybersecurity best practices"),
+            (tb2, "📊", "AI-Powered Insights", "Smarter decisions through advanced analytics"),
+            (tb3, "🔒", "Data Protection", "Your data is safe with enterprise-grade security"),
+            (tb4, "🕓", "Reliable & Available", "Built for performance and reliability"),
+        ]
+        for col, icon, title, desc in trust_items:
+            with col:
+                st.markdown(f"""
+                <div class="trust-item">
+                    <div class="trust-icon">{icon}</div>
+                    <div>
+                        <div class="trust-title">{title}</div>
+                        <div class="trust-desc">{desc}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="login-footer">
             LoanIQ · AI-Powered Loan Decision Intelligence<br>
             Universiti Teknikal Malaysia Melaka (UTeM) · FYP 2025/2026<br>
             This system is for academic purposes only.<br>
