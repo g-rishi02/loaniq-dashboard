@@ -273,10 +273,23 @@ def show_login_page() -> bool:
 
     /* ── Input fields need a visible fill distinct from the white card
        behind them — otherwise they're invisible against it. ── */
-    .st-key-login_card input {
+    /* ── Style the input WRAPPER (not just the raw <input>) so both fields
+       are identical width regardless of the password field's eye-icon
+       toggle, which lives inside this same wrapper. ── */
+    .st-key-login_card [data-baseweb="input"] {
         background:#F8FAFC !important;
         border:1px solid #CBD5E1 !important;
         border-radius:8px !important;
+        width:100% !important;
+    }
+    .st-key-login_card [data-baseweb="input"]:focus-within {
+        background:#FFFFFF !important;
+        border-color:#10B981 !important;
+        box-shadow:0 0 0 3px rgba(16,185,129,0.12) !important;
+    }
+    .st-key-login_card input {
+        background:transparent !important;
+        border:none !important;
         padding-top:0.6rem !important;
         padding-bottom:0.6rem !important;
         width:100% !important;
@@ -287,11 +300,6 @@ def show_login_page() -> bool:
     .st-key-login_card .stTextInput,
     .st-key-login_card .stTextInput > div {
         width:100% !important;
-    }
-    .st-key-login_card input:focus {
-        background:#FFFFFF !important;
-        border-color:#10B981 !important;
-        box-shadow:0 0 0 3px rgba(16,185,129,0.12) !important;
     }
     .st-key-login_card input::placeholder {
         color:#94A3B8 !important;
