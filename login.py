@@ -239,17 +239,32 @@ def show_login_page() -> bool:
 
     st.markdown("""
     <style>
-    .login-title  { font-size:2rem; font-weight:800; color:#F1F5F9;
+    .login-title  { font-size:1.9rem; font-weight:800; color:#0F172A;
                     letter-spacing:-0.03em; text-align:center; margin-bottom:0.25rem; }
-    .login-sub    { font-size:0.9rem; color:#00D4FF; text-align:center;
-                    font-weight:500; margin-bottom:2rem; }
-    .login-notice { font-size:0.74rem; color:#475569; text-align:center;
-                    margin-top:1.5rem; padding-top:1rem; border-top:1px solid #1E3A5F; }
+    .login-sub    { font-size:0.92rem; color:#64748B; text-align:center;
+                    font-weight:500; margin-bottom:1.75rem; }
+    .login-notice { font-size:0.78rem; color:#065F46; text-align:center;
+                    margin-top:1rem; padding:0.6rem 0.75rem; background:#F0FDFA;
+                    border:1px solid #A7F3D0; border-radius:8px; }
+    .login-footer { font-size:0.74rem; color:#94A3B8; text-align:center;
+                    margin-top:1.5rem; padding-top:1rem; border-top:1px solid #E2E8F0;
+                    line-height:1.8; }
     .pw-checklist { display:grid; grid-template-columns:1fr 1fr; gap:2px 16px;
                      font-size:0.78rem; line-height:1.9; margin:6px 0 4px 0; }
     .pw-check-pass { color:#10B981; }
     .pw-check-fail { color:#EF4444; }
-    .pw-check-idle { color:#475569; }
+    .pw-check-idle { color:#94A3B8; }
+    .forgot-link { font-size:0.85rem; color:#10B981; font-weight:600;
+                   text-align:right; padding-top:0.55rem; }
+    .trust-strip { background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px;
+                   padding:1.25rem 1.5rem; margin-top:1.5rem;
+                   box-shadow:0 1px 3px rgba(15,23,42,0.05); }
+    .trust-item { display:flex; align-items:flex-start; gap:0.6rem; }
+    .trust-icon { width:38px; height:38px; border-radius:50%; background:#ECFDF5;
+                  display:flex; align-items:center; justify-content:center;
+                  font-size:1.1rem; flex-shrink:0; }
+    .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; }
+    .trust-desc  { font-size:0.74rem; color:#64748B; line-height:1.4; margin-top:2px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -258,17 +273,16 @@ def show_login_page() -> bool:
 
         st.markdown("""
         <div style="text-align:center;margin-bottom:1.5rem">
-            <svg width="56" height="56" viewBox="0 0 84 84">
-                <rect x="0" y="0" width="84" height="84" rx="20" fill="#00D4FF" opacity="0.10"/>
+            <svg width="72" height="72" viewBox="0 0 84 84" style="margin-bottom:0.5rem">
                 <ellipse cx="42" cy="62" rx="26" ry="9" fill="#0F2340" stroke="#0F6E56" stroke-width="2.5"/>
                 <ellipse cx="42" cy="54" rx="26" ry="9" fill="#0F2340" stroke="#0F6E56" stroke-width="2.5"/>
                 <ellipse cx="42" cy="46" rx="26" ry="9" fill="#0F2340" stroke="#1D9E75" stroke-width="2.5"/>
-                <ellipse cx="42" cy="34" rx="26" ry="9" fill="#0F2340" stroke="#00D4FF" stroke-width="2.8"/>
-                <text x="42" y="35" font-size="13" font-weight="700" fill="#5DCAA5"
+                <ellipse cx="42" cy="34" rx="26" ry="9" fill="#0F2340" stroke="#10B981" stroke-width="2.8"/>
+                <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
             <div class="login-title">LoanIQ</div>
-            <div class="login-sub">Loan Decision Intelligence</div>
+            <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -277,11 +291,22 @@ def show_login_page() -> bool:
         # ── LOGIN TAB ─────────────────────────────────────────────────────────
         with tab_login:
             st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
-            username_in = st.text_input("Username", placeholder="Enter your username",
+            username_in = st.text_input("👤  Username", placeholder="Enter your username",
                                         key="login_username")
-            password_in = st.text_input("Password", type="password",
+            password_in = st.text_input("🔒  Password", type="password",
                                         placeholder="Enter your password",
                                         key="login_password")
+
+            rem_col, forgot_col = st.columns([1, 1])
+            with rem_col:
+                remember_me = st.checkbox("Remember me", key="remember_me", value=True)
+            with forgot_col:
+                forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
+                                            use_container_width=True)
+            if forgot_clicked:
+                st.info("Password reset isn't self-service yet — please contact your "
+                        "system administrator to have your password reset.")
+
             st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
             if st.button("🔑 Login", type="primary",
@@ -293,6 +318,7 @@ def show_login_page() -> bool:
                     if ok:
                         st.session_state.logged_in = True
                         st.session_state.username  = username_in.strip().lower()
+                        st.session_state.remember_me_choice = remember_me
                         st.success(f"Welcome back, {username_in.strip()}! 👋")
                         st.rerun()
                     else:
@@ -302,9 +328,8 @@ def show_login_page() -> bool:
                 st.info("No accounts yet — go to the **Register** tab to create one first.")
 
             st.markdown("""
-            <div style="font-size:0.74rem;color:#475569;margin-top:1rem;
-                 border-top:1px solid #1E3A5F;padding-top:0.75rem">
-                🔒 Account locked after 5 failed attempts for 30 minutes
+            <div class="login-notice">
+                🛡️ Account locked after 5 failed attempts for 30 minutes
                 (CyberSecurity Malaysia policy).
             </div>
             """, unsafe_allow_html=True)
