@@ -271,6 +271,24 @@ def show_login_page() -> bool:
         background:#FFFFFF !important;
     }
 
+    /* ── Input fields need a visible fill distinct from the white card
+       behind them — otherwise they're invisible against it. ── */
+    .st-key-login_card input {
+        background:#F8FAFC !important;
+        border:1px solid #CBD5E1 !important;
+        border-radius:8px !important;
+        padding-top:0.6rem !important;
+        padding-bottom:0.6rem !important;
+    }
+    .st-key-login_card input:focus {
+        background:#FFFFFF !important;
+        border-color:#10B981 !important;
+        box-shadow:0 0 0 3px rgba(16,185,129,0.12) !important;
+    }
+    .st-key-login_card input::placeholder {
+        color:#94A3B8 !important;
+    }
+
     /* ── "Forgot password?" styled as a plain link, not a boxed button.
        Two overlapping selectors for reliability:
        (1) matches styles.py's secondary-button specificity exactly, and
@@ -312,8 +330,8 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">Loan Decision Intelligence</div>
-            <div class="login-sub">AI-Powered Smarter Lending</div>
+            <div class="login-title">LoanIQ</div>
+            <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
         </div>
         """, unsafe_allow_html=True)
 
