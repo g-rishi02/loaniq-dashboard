@@ -297,18 +297,17 @@ def show_login_page() -> bool:
         color:#94A3B8 !important;
     }
 
-    /* ── Spread Login/Register tabs to opposite ends instead of clustering
-       on the left. Uses [role="tablist"]/[role="tab"] (stable ARIA attributes)
-       instead of [data-baseweb="tab-list"] — DevTools confirmed this
-       Streamlit version renders tabs via React Aria, which doesn't set
-       data-baseweb at all, so the old selector never matched anything. ── */
+    /* ── Login/Register tabs split into two equal halves, each label
+       centered within its own half (not pinned to the outer edges). ── */
     .st-key-login_card [role="tablist"] {
         display:flex !important;
-        justify-content:space-between !important;
         width:100% !important;
     }
     .st-key-login_card [role="tab"] {
-        flex-shrink:0;
+        flex:1 1 50% !important;
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
     }
 
     /* ── "Forgot password?" styled as a plain link, not a boxed button.
@@ -359,7 +358,7 @@ def show_login_page() -> bool:
 
         # ── The actual white card, using a real bordered Streamlit container ────
         with st.container(border=True, key="login_card"):
-            tab_login, tab_register = st.tabs(["🔑 Login", "📝 Register"])
+            tab_login, tab_register = st.tabs(["🔑 Login", "👤 Register"])
 
             # ── LOGIN TAB ─────────────────────────────────────────────────────
             with tab_login:
