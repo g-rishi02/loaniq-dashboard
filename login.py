@@ -265,22 +265,6 @@ def show_login_page() -> bool:
         padding:0.5rem 0.5rem 0.25rem 0.5rem;
     }
 
-    /* ── Trust badge strip: the real bordered container, distinguished from
-       the login card by the fact it contains .trust-item elements ── */
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(.trust-item) {
-        background:#FFFFFF !important;
-        border:1px solid #E2E8F0 !important;
-        border-radius:16px !important;
-        box-shadow:0 1px 4px rgba(15,23,42,0.05) !important;
-        padding:1.5rem 1.75rem !important;
-    }
-    .trust-item { display:flex; align-items:center; gap:0.75rem; }
-    .trust-icon { width:42px; height:42px; border-radius:50%; background:#ECFDF5;
-                  display:flex; align-items:center; justify-content:center;
-                  font-size:1.2rem; flex-shrink:0; }
-    .trust-title { font-size:0.85rem; font-weight:700; color:#0F172A; line-height:1.3; }
-    .trust-desc  { font-size:0.72rem; color:#64748B; line-height:1.4; margin-top:3px; }
-
     /* ── "Forgot password?" styled as a plain link, not a boxed button.
        Two overlapping selectors for reliability:
        (1) matches styles.py's secondary-button specificity exactly, and
@@ -405,30 +389,6 @@ def show_login_page() -> bool:
                             f"✅ {msg} Switch to the Login tab to sign in." if ok else f"✗ {msg}"
                         )
                         st.rerun()
-
-        # ── Trust badge strip — real bordered container (markdown divs can't
-        #    actually wrap st.columns, which was leaving an empty white box
-        #    above unstyled content) ────────────────────────────────────────
-        st.markdown('<div style="height:1.25rem"></div>', unsafe_allow_html=True)
-        with st.container(border=True):
-            tb1, tb2, tb3, tb4 = st.columns(4, gap="medium")
-            trust_items = [
-                (tb1, "🛡️", "Secure & Compliant", "Aligned with cybersecurity best practices"),
-                (tb2, "📊", "AI-Powered Insights", "Smarter decisions through advanced analytics"),
-                (tb3, "🔒", "Data Protection", "Your data is safe with enterprise-grade security"),
-                (tb4, "🕓", "Reliable & Available", "Built for performance and reliability"),
-            ]
-            for col, icon, title, desc in trust_items:
-                with col:
-                    st.markdown(f"""
-                    <div class="trust-item">
-                        <div class="trust-icon">{icon}</div>
-                        <div>
-                            <div class="trust-title">{title}</div>
-                            <div class="trust-desc">{desc}</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
 
         st.markdown("""
         <div class="login-footer">
