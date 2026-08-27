@@ -11,6 +11,9 @@ import streamlit.components.v1 as components
 import hashlib
 import re
 import os
+import secrets
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from db import get_connection, init_all_tables
 
@@ -109,10 +112,14 @@ def _save_password_history(user_id: int, pw_hash: str, salt: str):
     con.commit(); cur.close(); con.close()
 
 # ── Register ───────────────────────────────────────────────────────────────────
-def _register(username: str, password: str):
+def _register(username: str, password: str, email: str = ""):
     u_ok, u_err = _validate_username(username)
     if not u_ok:
         return False, u_err
+
+    email = (email or "").strip().lower()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return False, "Please provide a valid email address."
 
     checks = _check_password_requirements(password)
     if not _password_all_pass(checks):
@@ -126,18 +133,20 @@ def _register(username: str, password: str):
         cur = con.cursor()
         cur.execute(
             """INSERT INTO users
-               (username, password_hash, salt, created_at, failed_attempts)
-               VALUES (%s,%s,%s,%s,0) RETURNING id""",
+               (username, password_hash, salt, created_at, failed_attempts, email)
+               VALUES (%s,%s,%s,%s,0,%s) RETURNING id""",
             (username.strip().lower(), pw_hash, salt,
-             datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+             datetime.now().strftime("%Y-%m-%d %H:%M:%S"), email)
         )
         user_id = cur.fetchone()[0]
         con.commit(); cur.close(); con.close()
         _save_password_history(user_id, pw_hash, salt)
         return True, "Account created successfully."
     except Exception as e:
-        if "unique" in str(e).lower():
+        if "unique" in str(e).lower() and "username" in str(e).lower():
             return False, "Username already taken. Please choose another."
+        if "unique" in str(e).lower() and "email" in str(e).lower():
+            return False, "That email is already registered to another account."
         return False, f"Registration error: {str(e)}"
 
 # ── Login ──────────────────────────────────────────────────────────────────────
@@ -225,6 +234,138 @@ def _user_exists() -> bool:
     except Exception:
         return False
 
+# ── Password reset (email + one-time token) ─────────────────────────────────
+RESET_TOKEN_MINUTES = 15
+
+def _send_reset_email(to_email: str, token: str) -> bool:
+    """
+    Sends the reset token via SMTP if credentials are configured in the
+    environment (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM).
+    Returns True on success, False if not configured or sending failed —
+    callers should fall back to displaying the token on-screen in that case.
+    """
+    host = os.environ.get("SMTP_HOST")
+    port = os.environ.get("SMTP_PORT")
+    user = os.environ.get("SMTP_USER")
+    pw   = os.environ.get("SMTP_PASSWORD")
+    from_addr = os.environ.get("SMTP_FROM", user)
+
+    if not all([host, port, user, pw]):
+        return False  # SMTP not configured — caller falls back to on-screen token
+
+    try:
+        body = (
+            f"Your LoanIQ password reset code is:\n\n{token}\n\n"
+            f"This code expires in {RESET_TOKEN_MINUTES} minutes. "
+            f"If you did not request this, you can safely ignore this email."
+        )
+        msg = MIMEText(body)
+        msg["Subject"] = "LoanIQ — Password Reset Code"
+        msg["From"] = from_addr
+        msg["To"] = to_email
+
+        with smtplib.SMTP(host, int(port), timeout=10) as server:
+            server.starttls()
+            server.login(user, pw)
+            server.sendmail(from_addr, [to_email], msg.as_string())
+        return True
+    except Exception:
+        return False
+
+def _request_password_reset(email: str):
+    """
+    Step 1 of the reset flow. Looks up the account by email, generates a
+    one-time token, stores its hash (never the raw token) with a 15-minute
+    expiry, and attempts to email it. Returns (ok, message, raw_token).
+    raw_token is only non-None when SMTP isn't configured, so the UI can
+    display it directly as a dev/demo fallback.
+    """
+    email = email.strip().lower()
+    try:
+        con = get_connection()
+        cur = con.cursor()
+        cur.execute("SELECT id FROM users WHERE LOWER(email)=%s", (email,))
+        row = cur.fetchone()
+
+        # Deliberately vague response either way — don't reveal whether an
+        # email address is registered, to avoid leaking account existence.
+        generic_msg = (
+            "If that email is registered, a reset code has been sent. "
+            "It expires in 15 minutes."
+        )
+
+        if row is None:
+            cur.close(); con.close()
+            return True, generic_msg, None
+
+        user_id = row[0]
+        raw_token = f"{secrets.randbelow(900000) + 100000}"  # 6-digit code
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        expires_at = (datetime.now() + timedelta(minutes=RESET_TOKEN_MINUTES)
+                      ).strftime("%Y-%m-%d %H:%M:%S")
+
+        cur.execute(
+            """INSERT INTO password_resets (user_id, token_hash, expires_at, used, created_at)
+               VALUES (%s,%s,%s,FALSE,%s)""",
+            (user_id, token_hash, expires_at, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        con.commit(); cur.close(); con.close()
+
+        sent = _send_reset_email(email, raw_token)
+        return True, generic_msg, (None if sent else raw_token)
+
+    except Exception as e:
+        return False, f"Could not process reset request: {e}", None
+
+def _reset_password(email: str, token: str, new_password: str):
+    """Step 2 of the reset flow. Verifies the token and sets a new password."""
+    checks = _check_password_requirements(new_password)
+    if not _password_all_pass(checks):
+        return False, "New password does not meet all requirements."
+
+    email = email.strip().lower()
+    token_hash = hashlib.sha256(token.strip().encode()).hexdigest()
+
+    try:
+        con = get_connection()
+        cur = con.cursor()
+        cur.execute(
+            """SELECT u.id, pr.id, pr.expires_at, pr.used
+               FROM password_resets pr
+               JOIN users u ON u.id = pr.user_id
+               WHERE LOWER(u.email)=%s AND pr.token_hash=%s
+               ORDER BY pr.id DESC LIMIT 1""",
+            (email, token_hash)
+        )
+        row = cur.fetchone()
+        if row is None:
+            cur.close(); con.close()
+            return False, "Invalid reset code or email."
+
+        user_id, reset_id, expires_at, used = row
+        if used:
+            cur.close(); con.close()
+            return False, "This reset code has already been used."
+        if datetime.now() > datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S"):
+            cur.close(); con.close()
+            return False, "This reset code has expired. Please request a new one."
+
+        if _check_password_history(user_id, new_password):
+            cur.close(); con.close()
+            return False, "You've used this password before. Choose a different one."
+
+        salt    = _generate_salt()
+        pw_hash = _hash(new_password, salt)
+        cur.execute("UPDATE users SET password_hash=%s, salt=%s WHERE id=%s",
+                    (pw_hash, salt, user_id))
+        cur.execute("UPDATE password_resets SET used=TRUE WHERE id=%s", (reset_id,))
+        con.commit(); cur.close(); con.close()
+        _save_password_history(user_id, pw_hash, salt)
+        return True, "Password reset successfully. Please log in with your new password."
+
+    except Exception as e:
+        return False, f"Reset error: {e}"
+
 # ── UI ─────────────────────────────────────────────────────────────────────────
 def show_login_page() -> bool:
     """Returns True if logged in, False if not."""
@@ -244,16 +385,16 @@ def show_login_page() -> bool:
     .login-sub    { font-size:0.92rem; color:#64748B; text-align:center;
                     font-weight:500; margin-bottom:1.75rem; }
     .login-notice { font-size:0.78rem; color:#64748B; text-align:center;
-                    margin-top:0.35rem; padding-bottom:0.5rem; }
-    .login-footer { font-size:0.74rem; color:#94A3B8; text-align:center;
+                    margin-top:0.75rem; padding-bottom:1.1rem; }
+    .login-footer { font-size:0.76rem; color:#64748B; text-align:center;
                     margin-top:1.5rem; padding-top:1rem; border-top:1px solid #E2E8F0;
-                    line-height:1.8; }
+                    line-height:1.9; }
     .pw-checklist { display:grid; grid-template-columns:1fr 1fr; gap:2px 16px;
                      font-size:0.78rem; line-height:1.9; margin:6px 0 4px 0; }
     .pw-check-pass { color:#10B981; }
     .pw-check-fail { color:#EF4444; }
     .pw-check-idle { color:#94A3B8; }
-    .forgot-link { font-size:0.85rem; color:#10B981; font-weight:600; }
+    .forgot-link { font-size:0.8rem; color:#475569; font-weight:500; }
 
     /* ── The actual white "card" wrapping the tabs/form, targeted via the
        container's explicit key (Streamlit generates a stable .st-key-<key>
@@ -340,13 +481,14 @@ def show_login_page() -> bool:
         background:transparent !important;
         border:none !important;
         box-shadow:none !important;
-        color:#10B981 !important;
-        font-weight:600 !important;
-        font-size:0.85rem !important;
+        color:#475569 !important;
+        font-weight:500 !important;
+        font-size:0.8rem !important;
     }
     .main .stButton > button[data-baseweb="button"][kind="secondary"]:hover,
     .st-key-forgot_pw_btn button:hover {
         background:transparent !important;
+        color:#10B981 !important;
         text-decoration:underline;
         transform:none !important;
         box-shadow:none !important;
@@ -380,14 +522,19 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">LoanIQ</div>
-            <div class="login-sub">AI-Powered Loan Decision Intelligence</div>
+            <div class="login-title">Loan Decision Intelligence</div>
+            <div class="login-sub">AI-Powered Smarter Lending</div>
         </div>
         """, unsafe_allow_html=True)
 
         # ── The actual white card, using a real bordered Streamlit container ────
+        if "auth_view" not in st.session_state:
+            st.session_state.auth_view = "login_register"
+
         with st.container(border=True, key="login_card"):
-            tab_login, tab_register = st.tabs(["🔑 Login", "👤 Register"])
+
+          if st.session_state.auth_view == "login_register":
+            tab_login, tab_register = st.tabs(["Login", "Register"])
 
             # ── LOGIN TAB ─────────────────────────────────────────────────────
             with tab_login:
@@ -406,12 +553,12 @@ def show_login_page() -> bool:
                     forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
                                                 use_container_width=True)
                 if forgot_clicked:
-                    st.info("Password reset isn't self-service yet — please contact your "
-                            "system administrator to have your password reset.")
+                    st.session_state.auth_view = "forgot_step1"
+                    st.rerun()
 
                 st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
-                if st.button("🔑 Login", type="primary",
+                if st.button("Sign in", type="primary",
                              use_container_width=True, key="btn_login"):
                     if not username_in or not password_in:
                         st.error("Please enter both username and password.")
@@ -431,7 +578,8 @@ def show_login_page() -> bool:
 
                 st.markdown("""
                 <div class="login-notice">
-                    Note : 🛡️ Account locked after 5 failed attempts for 30 minutes
+                    Security: Account protection is enabled. Your account is
+                    temporarily locked after 5 failed login attempts.
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -457,12 +605,95 @@ def show_login_page() -> bool:
                     submit_id = result.get("submit_id")
                     if submit_id != st.session_state.get("_reg_last_submit_id"):
                         st.session_state._reg_last_submit_id = submit_id
-                        ok, msg = _register(result.get("u", ""), result.get("p", ""))
+                        ok, msg = _register(result.get("u", ""), result.get("p", ""),
+                                            result.get("em", ""))
                         st.session_state._reg_last_ok  = ok
                         st.session_state._reg_last_msg = (
                             f"✅ {msg} Switch to the Login tab to sign in." if ok else f"✗ {msg}"
                         )
                         st.rerun()
+
+          # ── FORGOT PASSWORD — Step 1: enter email, request a token ──────────
+          elif st.session_state.auth_view == "forgot_step1":
+            st.markdown('<div style="font-weight:700;font-size:1.05rem;margin-bottom:0.25rem">'
+                        'Reset your password</div>', unsafe_allow_html=True)
+            st.markdown('<div style="color:#64748B;font-size:0.85rem;margin-bottom:1rem">'
+                        'Enter the email linked to your account and we\'ll send you a '
+                        '6-digit reset code.</div>', unsafe_allow_html=True)
+
+            reset_email = st.text_input("Email", placeholder="you@example.com",
+                                         key="reset_email_input")
+
+            rc1, rc2 = st.columns([1, 1])
+            with rc1:
+                if st.button("← Back to Login", key="back_to_login_btn",
+                             use_container_width=True):
+                    st.session_state.auth_view = "login_register"
+                    st.rerun()
+            with rc2:
+                if st.button("Send reset code", type="primary", key="send_reset_btn",
+                             use_container_width=True):
+                    if not reset_email or "@" not in reset_email:
+                        st.error("Please enter a valid email address.")
+                    else:
+                        ok, msg, fallback_token = _request_password_reset(reset_email)
+                        if ok:
+                            st.session_state.reset_email = reset_email.strip().lower()
+                            st.session_state.reset_fallback_token = fallback_token
+                            st.session_state.auth_view = "forgot_step2"
+                            st.rerun()
+                        else:
+                            st.error(msg)
+
+          # ── FORGOT PASSWORD — Step 2: enter token + new password ────────────
+          elif st.session_state.auth_view == "forgot_step2":
+            st.markdown('<div style="font-weight:700;font-size:1.05rem;margin-bottom:0.25rem">'
+                        'Enter your reset code</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="color:#64748B;font-size:0.85rem;margin-bottom:0.75rem">'
+                        f'A 6-digit code was sent to <strong>{st.session_state.get("reset_email","")}</strong>. '
+                        f'It expires in {RESET_TOKEN_MINUTES} minutes.</div>', unsafe_allow_html=True)
+
+            fallback = st.session_state.get("reset_fallback_token")
+            if fallback:
+                st.info(
+                    f"Email isn't configured on this deployment yet, so here's your "
+                    f"code for testing: **{fallback}**  \n"
+                    f"(In production, this would be emailed instead of shown here.)"
+                )
+
+            reset_token_in = st.text_input("Reset code", placeholder="123456",
+                                            key="reset_token_input", max_chars=6)
+            new_pw_in  = st.text_input("New password", type="password",
+                                        placeholder="Enter a new password",
+                                        key="reset_new_pw")
+            new_pw2_in = st.text_input("Confirm new password", type="password",
+                                        placeholder="Re-enter the new password",
+                                        key="reset_new_pw2")
+
+            rc1, rc2 = st.columns([1, 1])
+            with rc1:
+                if st.button("← Back", key="back_to_step1_btn", use_container_width=True):
+                    st.session_state.auth_view = "forgot_step1"
+                    st.rerun()
+            with rc2:
+                if st.button("Reset password", type="primary", key="do_reset_btn",
+                             use_container_width=True):
+                    if not reset_token_in or not new_pw_in or not new_pw2_in:
+                        st.error("Please fill in all fields.")
+                    elif new_pw_in != new_pw2_in:
+                        st.error("Passwords do not match.")
+                    else:
+                        ok, msg = _reset_password(
+                            st.session_state.get("reset_email", ""),
+                            reset_token_in, new_pw_in
+                        )
+                        if ok:
+                            st.success(msg)
+                            st.session_state.auth_view = "login_register"
+                            for k in ("reset_email", "reset_fallback_token"):
+                                st.session_state.pop(k, None)
+                        else:
+                            st.error(msg)
 
         st.markdown("""
         <div class="login-footer">
