@@ -641,6 +641,9 @@ def show_login_page() -> bool:
                             st.session_state.reset_email = reset_email.strip().lower()
                             st.session_state.reset_fallback_token = fallback_token
                             st.session_state.auth_view = "forgot_step2"
+                            if fallback_token:
+                                st.toast(f"Dev fallback — your code is {fallback_token}",
+                                         icon="🔑")
                             st.rerun()
                         else:
                             st.error(msg)
