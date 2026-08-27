@@ -493,11 +493,6 @@ def show_login_page() -> bool:
         transform:none !important;
         box-shadow:none !important;
     }
-    /* Keep the "Remember me" checkbox and "Forgot password?" button
-       vertically centered on the same row. ── */
-    .st-key-login_card div[data-testid="stHorizontalBlock"]:has(input[type="checkbox"]) {
-        align-items:center !important;
-    }
     .st-key-forgot_pw_btn {
         display:flex !important;
         align-items:center !important;
@@ -522,8 +517,8 @@ def show_login_page() -> bool:
                 <text x="42" y="35" font-size="14" font-weight="700" fill="#5DCAA5"
                       font-family="Georgia,serif" text-anchor="middle" dominant-baseline="central">$</text>
             </svg>
-            <div class="login-title">Loan Decision Intelligence</div>
-            <div class="login-sub">AI-Powered Smarter Lending</div>
+            <div class="login-title">LoanIQ</div>
+            <div class="login-sub">AI-Powered Loan Decision Intelligence System</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -545,13 +540,9 @@ def show_login_page() -> bool:
                                             placeholder="Enter your password",
                                             key="login_password")
 
-                # Remember me + Forgot password on the same row, aligned
-                rem_col, fp_col = st.columns([1, 1])
-                with rem_col:
-                    remember_me = st.checkbox("Remember me", key="remember_me", value=True)
-                with fp_col:
-                    forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
-                                                use_container_width=True)
+                # Forgot password, left-aligned on its own row
+                forgot_clicked = st.button("Forgot password?", key="forgot_pw_btn",
+                                            use_container_width=False)
                 if forgot_clicked:
                     st.session_state.auth_view = "forgot_step1"
                     st.rerun()
@@ -567,7 +558,6 @@ def show_login_page() -> bool:
                         if ok:
                             st.session_state.logged_in = True
                             st.session_state.username  = username_in.strip().lower()
-                            st.session_state.remember_me_choice = remember_me
                             st.success(f"Welcome back, {username_in.strip()}! 👋")
                             st.rerun()
                         else:
