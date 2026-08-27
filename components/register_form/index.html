@@ -57,6 +57,17 @@
 </div>
 
 <div class="mb">
+  <label class="field-label">Email address</label>
+  <div class="field-wrap">
+    <input type="email" id="email" placeholder="e.g. you@example.com"
+           oninput="checkEmail()" autocomplete="email">
+  </div>
+  <div class="checklist">
+    <span class="check idle" id="e1">○ Used for password reset only</span>
+  </div>
+</div>
+
+<div class="mb">
   <label class="field-label">Choose a password</label>
   <div class="field-wrap">
     <input type="password" id="pw" placeholder="e.g. Cloud$River9Moon"
@@ -164,6 +175,12 @@ function checkUsername() {
   setCheck('u3', has && /^[a-zA-Z0-9._-]+$/.test(v), has);
   updateSubmit(); setFrameHeight();
 }
+function checkEmail() {
+  const v = document.getElementById('email').value, has = v.length > 0;
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  setCheck('e1', valid, has);
+  updateSubmit(); setFrameHeight();
+}
 function checkPassword() {
   const v = document.getElementById('pw').value, has = v.length > 0;
   setCheck('p1', v.length >= MIN_P, has);
@@ -207,6 +224,10 @@ function allU() {
   const v = document.getElementById('uname').value;
   return v.length >= MIN_U && /^[a-zA-Z]/.test(v) && /^[a-zA-Z0-9._-]+$/.test(v);
 }
+function allE() {
+  const v = document.getElementById('email').value;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
 function allP() {
   const v = document.getElementById('pw').value;
   return v.length >= MIN_P && /[A-Z]/.test(v) && /[a-z]/.test(v) &&
@@ -216,15 +237,16 @@ function updateSubmit() {
   const pw = document.getElementById('pw').value,
         pw2 = document.getElementById('pw2').value;
   document.getElementById('submit-btn').disabled =
-    !(allU() && allP() && pw === pw2 && pw2.length > 0);
+    !(allU() && allE() && allP() && pw === pw2 && pw2.length > 0);
 }
 function submitForm() {
   const u = document.getElementById('uname').value.trim(),
+        em = document.getElementById('email').value.trim(),
         p = document.getElementById('pw').value;
-  if (!allU() || !allP()) return;
+  if (!allU() || !allE() || !allP()) return;
   // Send the submission to Python via the Streamlit component protocol.
   // A unique submit_id lets Python detect a NEW submission vs. a stale rerun value.
-  setComponentValue({ action: "register", u: u, p: p, submit_id: Date.now() + "_" + Math.random() });
+  setComponentValue({ action: "register", u: u, em: em, p: p, submit_id: Date.now() + "_" + Math.random() });
 }
 </script>
 </body>

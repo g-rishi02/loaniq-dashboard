@@ -100,6 +100,34 @@ def init_all_tables():
         )
     """)
 
+    # ── Email column on users (added post-launch; nullable so existing
+    #    accounts registered before this feature still work). ──────────────
+    cur.execute("""
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT
+    """)
+    cur.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'users_email_unique'
+            ) THEN
+                ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
+            END IF;
+        END $$;
+    """)
+
+    # ── Password reset tokens ────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id          SERIAL PRIMARY KEY,
+            user_id     INTEGER NOT NULL REFERENCES users(id),
+            token_hash  TEXT NOT NULL,
+            expires_at  TEXT NOT NULL,
+            used        BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at  TEXT NOT NULL
+        )
+    """)
+
     con.commit()
     cur.close()
     con.close()
