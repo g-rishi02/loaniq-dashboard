@@ -1,5 +1,6 @@
 """
-LoanIQ — Login / Register Module (PostgreSQL version)
+LoanIQ : Login / Register Module (PostgreSQL version)
+
 Security standards:
 - CyberSecurity Malaysia / NACSA
 - NIST SP 800-63B
@@ -17,14 +18,13 @@ from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from db import get_connection, init_all_tables
 
-# ── Custom component: the fancy HTML/JS register form, wired to Python ─────────
-# This is a local Streamlit Custom Component (no npm/React build needed).
-# It lives at ./components/register_form/index.html relative to this file.
+# Custom register form component (HTML/JS, no build) for Streamlit.
+# Located at ./components/register_form/index.html.
 _COMPONENT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                "components", "register_form")
 _register_form = components.declare_component("register_form", path=_COMPONENT_DIR)
 
-# ── Constants ──────────────────────────────────────────────────────────────────
+# Constants & Configuration
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES     = 30
 PASSWORD_HISTORY    = 5
@@ -33,20 +33,21 @@ MAX_PASSWORD_LEN    = 128
 MIN_USERNAME_LEN    = 4
 MAX_USERNAME_LEN    = 30
 
+# To prevent user from registering as below
 BLOCKED_USERNAMES = {
     "admin", "administrator", "user", "test", "guest", "root", "superuser",
     "loaniq", "system", "support", "helpdesk", "staff", "manager", "demo",
     "default", "login", "password", "null", "none"
 }
 
-# ── Hashing (salted SHA-256) ───────────────────────────────────────────────────
+# Core Algorithm : Salted SHA-256 Hashing
 def _generate_salt() -> str:
     return os.urandom(32).hex()
 
 def _hash(password: str, salt: str) -> str:
     return hashlib.sha256((salt + password).encode()).hexdigest()
 
-# ── Validation ─────────────────────────────────────────────────────────────────
+# Validation Functions 
 def _validate_username(username: str):
     u = username.strip()
     if len(u) < MIN_USERNAME_LEN:
@@ -86,7 +87,7 @@ def _password_strength(password: str) -> tuple:
     elif score == 6: return "Strong",      "#10B981", 90
     else:            return "Very Strong", "#00D4FF", 100
 
-# ── Password history ───────────────────────────────────────────────────────────
+# PASSWD HISTORY
 def _check_password_history(user_id: int, new_password: str) -> bool:
     con = get_connection()
     cur = con.cursor()
@@ -111,7 +112,7 @@ def _save_password_history(user_id: int, pw_hash: str, salt: str):
     )
     con.commit(); cur.close(); con.close()
 
-# ── Register ───────────────────────────────────────────────────────────────────
+# REGISTER
 def _register(username: str, password: str, email: str = ""):
     u_ok, u_err = _validate_username(username)
     if not u_ok:
@@ -149,7 +150,7 @@ def _register(username: str, password: str, email: str = ""):
             return False, "That email is already registered to another account."
         return False, f"Registration error: {str(e)}"
 
-# ── Login ──────────────────────────────────────────────────────────────────────
+# LOGIN
 def _login(username: str, password: str):
     try:
         con = get_connection()
@@ -234,7 +235,7 @@ def _user_exists() -> bool:
     except Exception:
         return False
 
-# ── Password reset (email + one-time token) ─────────────────────────────────
+# Password reset (email + one-time token)
 RESET_TOKEN_MINUTES = 15
 
 def _send_reset_email(to_email: str, token: str) -> bool:
@@ -251,7 +252,7 @@ def _send_reset_email(to_email: str, token: str) -> bool:
     from_addr = os.environ.get("SMTP_FROM", user)
 
     if not all([host, port, user, pw]):
-        return False  # SMTP not configured — caller falls back to on-screen token
+        return False  # SMTP not configured, caller falls back to on-screen token
 
     try:
         body = (
@@ -287,8 +288,8 @@ def _request_password_reset(email: str):
         cur.execute("SELECT id FROM users WHERE LOWER(email)=%s", (email,))
         row = cur.fetchone()
 
-        # Deliberately vague response either way — don't reveal whether an
-        # email address is registered, to avoid leaking account existence.
+        # Gives esponse either way don't reveal whether an
+        # email address is registered to avoid leaking account existence.
         generic_msg = (
             "If that email is registered, a reset code has been sent. "
             "It expires in 15 minutes."
@@ -366,7 +367,7 @@ def _reset_password(email: str, token: str, new_password: str):
     except Exception as e:
         return False, f"Reset error: {e}"
 
-# ── UI ─────────────────────────────────────────────────────────────────────────
+# UI
 def show_login_page() -> bool:
     """Returns True if logged in, False if not."""
     try:
@@ -522,7 +523,7 @@ def show_login_page() -> bool:
         </div>
         """, unsafe_allow_html=True)
 
-        # ── The actual white card, using a real bordered Streamlit container ────
+        # The actual white card, using a real bordered Streamlit container 
         if "auth_view" not in st.session_state:
             st.session_state.auth_view = "login_register"
 
@@ -531,7 +532,7 @@ def show_login_page() -> bool:
           if st.session_state.auth_view == "login_register":
             tab_login, tab_register = st.tabs(["Login", "Register"])
 
-            # ── LOGIN TAB ─────────────────────────────────────────────────────
+            # LOGIN TAB 
             with tab_login:
                 st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
                 username_in = st.text_input("Username", placeholder="Enter your username",
@@ -573,12 +574,12 @@ def show_login_page() -> bool:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # ── REGISTER TAB — connected custom component (no duplicate form) ──
+            # REGISTER TAB , connected custom component (no duplicate form)
             with tab_register:
                 st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
-                # Pass the last server response back into the component so it can
-                # display a success/error message inline, without a second form.
+                # Pass the last server response back into the component 
+                # To display a success/error message inline
                 last_ok  = st.session_state.get("_reg_last_ok")
                 last_msg = st.session_state.get("_reg_last_msg")
 
@@ -589,7 +590,7 @@ def show_login_page() -> bool:
                 )
 
                 # result is None until the JS side calls setComponentValue().
-                # Each submission carries a unique submit_id so we only process
+                # Each submission carries a unique submit_id to only process
                 # a given click once, even though Streamlit reruns the script.
                 if result and result.get("action") == "register":
                     submit_id = result.get("submit_id")
@@ -603,7 +604,7 @@ def show_login_page() -> bool:
                         )
                         st.rerun()
 
-          # ── FORGOT PASSWORD — Step 1: enter email, request a token ──────────
+          # FORGOT PASSWORD Step 1: enter email, request a token 
           elif st.session_state.auth_view == "forgot_step1":
             st.markdown('<div style="font-weight:700;font-size:1.05rem;margin-bottom:0.25rem">'
                         'Reset your password</div>', unsafe_allow_html=True)
@@ -638,7 +639,7 @@ def show_login_page() -> bool:
                         else:
                             st.error(msg)
 
-          # ── FORGOT PASSWORD — Step 2: enter token + new password ────────────
+          # Step 2: enter token + new password 
           elif st.session_state.auth_view == "forgot_step2":
             st.markdown('<div style="font-weight:700;font-size:1.05rem;margin-bottom:0.25rem">'
                         'Enter your reset code</div>', unsafe_allow_html=True)
