@@ -6,12 +6,7 @@ Run with:  streamlit run app.py
 
 import streamlit as st
 
-# ════════════════════════════════════════════════════════════════════════════
-# set_page_config MUST be the very first Streamlit command in the script —
-# before any other st.* call, including st.secrets access that happens
-# indirectly through db.py/init_all_tables(). Keep this block at the top,
-# right after `import streamlit as st`, and do not move anything above it.
-# ════════════════════════════════════════════════════════════════════════════
+# Page Configuration
 st.set_page_config(
     page_title="LoanIQ",
     page_icon="🏦",
@@ -39,7 +34,7 @@ from utils.charts import gauge_chart, shap_bar_chart, probability_dial, segment_
 from utils.recommendations import generate_recommendations, calculate_health_score
 from login import show_login_page
 
-# ── PostgreSQL: prediction history functions ──────────────────────────────────
+# PostgreSQL: prediction history functions 
 def _save_prediction(session_id, input_data, results):
     """Save one prediction record to Supabase PostgreSQL."""
     shap_a = results.get("shap_approval") or {}
@@ -104,7 +99,7 @@ try:
 except Exception:
     pass
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers 
 def _segment_description(segment):
     return {
         "Prime Borrower":    "Established credit history, low debt burden, strong financials.",
@@ -146,7 +141,7 @@ def _back_edit_row(prefix):
             st.rerun()
 
 # ════════════════════════════════════════════════════════════════════════════
-# LOGIN GATE — must pass before any content renders
+# LOGIN GATE 
 # ════════════════════════════════════════════════════════════════════════════
 if not show_login_page():
     st.stop()
@@ -154,7 +149,7 @@ if not show_login_page():
 models = load_models()
 
 # ════════════════════════════════════════════════════════════════════════════
-# SESSION STATE INIT
+# SESSION STATE INITIALIZATION
 # ════════════════════════════════════════════════════════════════════════════
 if "onboarding_done" not in st.session_state:
     st.session_state.onboarding_done = False
@@ -210,7 +205,7 @@ if not st.session_state.onboarding_done:
     st.markdown('<div style="height:1.5rem"></div>', unsafe_allow_html=True)
     _, btn_col, _ = st.columns([1, 1, 1])
     with btn_col:
-        if st.button("✅  Continue to Dashboard →", type="primary", use_container_width=True):
+        if st.button("Continue to Dashboard →", type="primary", use_container_width=True):
             st.session_state.ob_yrs    = ob_yrs
             st.session_state.ob_missed = ob_missed
             st.session_state.ob_util   = ob_util
@@ -234,7 +229,7 @@ ob_bankr  = st.session_state.get("ob_bankr",  "No")
 ob_bankr_num = 0 if ob_bankr == "No" else (1 if "1" in ob_bankr else 2)
 
 # ════════════════════════════════════════════════════════════════════════════
-# SIDE NAVIGATION
+# SIDEBAR NAVIGATION
 # ════════════════════════════════════════════════════════════════════════════
 NAV_PAGES = [
     ("home",       "🏠", "Home"),
@@ -244,7 +239,7 @@ NAV_PAGES = [
     ("history",    "🕓", "History"),
 ]
 
-# ── Minor structural tweaks not covered by utils/styles.py ──────────────────
+
 st.markdown("""
 <style>
 [data-testid="stAppViewContainer"] > .main { background: #F8FAFC; }
@@ -298,7 +293,7 @@ with st.sidebar:
 
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
-# ── Welcome header (Home page only) — other pages use the .page-header bar ──
+# welcome Header for HOME PAGE ONLY  
 if st.session_state.page == "home":
     _uname = st.session_state.get("username", "there")
     _now = datetime.now().strftime("%B %d, %Y  |  %I:%M %p")
@@ -343,7 +338,7 @@ else:
     fico_score     = _estimate_fico(ob_yrs, ob_missed, ob_util, ob_acc, ob_bankr_num)
     dti            = _estimate_dti(monthly_debt, annual_inc)
 
-# ── Derived values ────────────────────────────────────────────────────────────
+# Derived values
 home_map = {"Renting":"RENT","Own (with mortgage)":"MORTGAGE",
             "Own outright":"OWN","Living with family / Other":"OTHER"}
 fico_score = _estimate_fico(ob_yrs, ob_missed, ob_util, ob_acc, ob_bankr_num)
@@ -355,11 +350,11 @@ elif fico_score >= 670: fico_label, fico_color = "Good",        "#F59E0B"
 elif fico_score >= 580: fico_label, fico_color = "Fair",        "#FB923C"
 else:                   fico_label, fico_color = "Poor",        "#EF4444"
 
-# ── Check results exist ───────────────────────────────────────────────────────
+# Check results exist 
 has_results = "results" in st.session_state
 r = st.session_state.results if has_results else None
 
-# ── input_data fallback for non-home pages (used in SHAP explanation) ─────────
+# input_data fallback for non-home pages (used in SHAP explanation)
 input_data = {
     "loan_amnt":           loan_amnt,
     "annual_inc":          annual_inc,
@@ -592,7 +587,7 @@ if current_page == "home":
             repayment risk score, SHAP explanation, and borrower profile.
         </div>""", unsafe_allow_html=True)
 
-# ── Run analysis — must be AFTER button widget is rendered ────────────────────
+# Run analysis 
 if predict_btn:
     fico_score = _estimate_fico(ob_yrs, ob_missed, ob_util, ob_acc, ob_bankr_num)
     dti        = _estimate_dti(monthly_debt, annual_inc)
