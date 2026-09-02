@@ -14,21 +14,17 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 
-# Load variables from a local .env file, if present.
-# No-op if .env doesn't exist (e.g. on Streamlit Cloud).
+# Load variables from a local .env file
 load_dotenv()
 
-# ── Connection URL ─────────────────────────────────────────────────────────────
-# Priority: environment variable (.env locally, or system env) → Streamlit secrets
-# Checking the environment first means st.secrets is never touched during local
-# development, which avoids Streamlit's "No secrets found" banner appearing on
-# every page since no .streamlit/secrets.toml exists locally.
+# CONNECTION URL
+# Prefer environment variables over Streamlit secrets to avoid the "No secrets found" banner when secrets.toml is missing locally.
 def _get_db_url() -> str:
-    # 1. Environment variable (.env locally, or real env var in any deployment)
+    # 1. Environment variable (.env locally or real env var in deployment)
     url = os.environ.get("DATABASE_URL")
     if url:
         return url
-    # 2. Streamlit Cloud secrets (only reached if no env var was found)
+    # 2. Streamlit Cloud secrets (only if no env var was found)
     try:
         return st.secrets["DATABASE_URL"]
     except Exception:
@@ -48,8 +44,8 @@ def get_connection():
 
 def init_all_tables():
     """
-    Create all tables if they don't exist yet.
-    Safe to call on every app startup — uses CREATE TABLE IF NOT EXISTS.
+    Create all tables use CREATE TABLE IF NOT EXISTS. 
+
     """
     con = get_connection()
     cur = con.cursor()
@@ -100,8 +96,7 @@ def init_all_tables():
         )
     """)
 
-    # ── Email column on users (added post-launch; nullable so existing
-    #    accounts registered before this feature still work). ──────────────
+    # Altered the Table to add Email column on users 
     cur.execute("""
         ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT
     """)
@@ -116,7 +111,7 @@ def init_all_tables():
         END $$;
     """)
 
-    # ── Password reset tokens ────────────────────────────────────────────
+    # Password reset tokens 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS password_resets (
             id          SERIAL PRIMARY KEY,
